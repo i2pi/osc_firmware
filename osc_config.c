@@ -17,6 +17,7 @@ Config config =
     }
   },
   .clock_offset = 0.0,
+  .sync_mode = "locked",
   .send = {
     {
       .input = 1,
@@ -110,7 +111,7 @@ uint32_t get_analog_format_resolution(char *buf, int len) {
   snprintf(address, OSC_BUF_SIZE-1, "/analog_format/resolution");
   return tosc_writeMessage(buf, len, address, "s", config.analog_format.resolution);
 }
-void set_analog_format_resolution(const char *s) { config.analog_format.resolution = s; }
+void set_analog_format_resolution(const char *s) { strncpy(config.analog_format.resolution, s, CONFIG_MAX_STR_LEN-1); }
 /*
 ** analog_format_framerate
 */
@@ -128,7 +129,7 @@ uint32_t get_analog_format_colourspace(char *buf, int len) {
   snprintf(address, OSC_BUF_SIZE-1, "/analog_format/colourspace");
   return tosc_writeMessage(buf, len, address, "s", config.analog_format.colourspace);
 }
-void set_analog_format_colourspace(const char *s) { config.analog_format.colourspace = s; }
+void set_analog_format_colourspace(const char *s) { strncpy(config.analog_format.colourspace, s, CONFIG_MAX_STR_LEN-1); }
 /*
 ** analog_format_color_matrix
 */
@@ -147,6 +148,17 @@ uint32_t get_clock_offset(char *buf, int len) {
   return tosc_writeMessage(buf, len, address, "f", config.clock_offset);
 }
 void set_clock_offset(float v) { config.clock_offset = v; }
+
+/*
+** sync_mode
+*/
+uint32_t get_sync_mode(char *buf, int len) {
+  char address[OSC_BUF_SIZE];
+  snprintf(address, OSC_BUF_SIZE-1, "/sync_mode");
+  return tosc_writeMessage(buf, len, address, "s", config.sync_mode);
+}
+void set_sync_mode(const char *s) { strncpy(config.sync_mode, s, CONFIG_MAX_STR_LEN-1); }
+
 /*
 ** send_input
 */

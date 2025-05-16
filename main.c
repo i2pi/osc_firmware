@@ -139,14 +139,14 @@ char message_to_lut_channel(tosc_message *m, connectionT *conn) {
 }
 
 int message_to_matrix_element(tosc_message *m, connectionT *conn, int *row, int *col) {
-    // /analog_format/color_matrix/r/c
+    // /analog_format/color_matrix/r_c
     // 0123456789ABCDEF0123456789ABCDE
     //                             ^ ^
 
     int r, c;
 
-    r = m->buffer[0x1C] - '1' - 1; // This isn't Numerical Recipies in C -- 0 indexed
-    c = m->buffer[0x1E] - '1' - 1;
+    r = m->buffer[0x1C] - '0';
+    c = m->buffer[0x1E] - '0';
 
     if ((r < 0) || (r > 2) || (c < 0) || (c > 2)) {
         send_error_message(conn, "Matrix index out of bounds");
@@ -218,6 +218,8 @@ int send_lut_set_wrapper(tosc_message *m, connectionT *c) {
     if (channel < 0) return (-1);
 
     // TODO: What if we only send <32 floats??
+    // Need to make tosc_getNext aware of where o->marker is in relation to message length.
+
     for (i=0; i<32; i++) {
         v[i] = tosc_getNextFloat(m);
     }
@@ -255,6 +257,11 @@ int matrix_setter(tosc_message *m, connectionT *c) {
     return (0);
 }
 
+int sync_wrapper(tosc_message *m, connectionT *c) {
+    sync_all(OSC_BUFFER, OSC_BUFFER_SIZE);
+    return (0);
+}
+
 
 
 // handler table
@@ -262,12 +269,14 @@ int matrix_setter(tosc_message *m, connectionT *c) {
 osc_handlerT handlers[] = {
     // addr,                          fmt, raw_get,               raw_set,                arg,              handler
     { "/ack",                       "",  ack,                    ack,                    OSC_ARG_NONE,    { .generic = { NULL, NULL } } },
+    { "/sync",                      "",  sync_wrapper,            NULL,                   OSC_ARG_NONE,   { .generic = { NULL, NULL } } },
+    { "/sync_mode",                 "s", NULL,                    NULL,                   OSC_ARG_STRING, { .string = {get_sync_mode, set_sync_mode} } } ,
 
     { "/analog_format/resolution",  "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_resolution, set_analog_format_resolution} } },
     { "/analog_format/framerate",   "s",  NULL,                   NULL,                   OSC_ARG_FLOAT,   { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
     { "/analog_format/colourspace", "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
     { "/analog_format/colorspace",  "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
-    { "/analog_format/color_matrix/[1-3]/[1-3]", "f", matrix_getter, matrix_setter,       OSC_ARG_FLOAT, { .generic = {NULL, NULL} }  },
+    { "/analog_format/color_matrix/[0-2]_[0-2]", "f", matrix_getter, matrix_setter,       OSC_ARG_FLOAT, { .generic = {NULL, NULL} }  },
     { "/clock_offset",              "f",  NULL,                   NULL,                   OSC_ARG_FLOAT,   { .generic = { get_clock_offset, set_clock_offset } } },
 
     { "/send/[1-4]/lut/[YRGB]",     "L",  send_lut_get_wrapper,   send_lut_set_wrapper,   OSC_ARG_LUT, { .generic = {NULL, NULL} } },

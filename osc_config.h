@@ -7,10 +7,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#define CONFIG_MAX_STR_LEN 16
+
 typedef struct ConfigAnalogFormat {
-  const char* resolution;
+  char resolution[CONFIG_MAX_STR_LEN];
   float framerate;
-  const char* colourspace;
+  char colourspace[CONFIG_MAX_STR_LEN];
   float color_matrix[3][3];
 } ConfigAnalogFormat;
 
@@ -40,6 +42,7 @@ typedef struct ConfigSend {
 typedef struct Config {
   ConfigAnalogFormat analog_format;
   float clock_offset;
+  char sync_mode[CONFIG_MAX_STR_LEN];
   ConfigSend send[4];
 } Config;
 
@@ -48,6 +51,7 @@ uint32_t get_analog_format_framerate(char *buf, int len);
 uint32_t get_analog_format_colourspace(char *buf, int len);
 uint32_t get_analog_format_color_matrix(char *buf, int len, int row, int col);
 uint32_t get_clock_offset(char *buf, int len);
+uint32_t get_sync_mode(char *buf, int len);
 uint32_t get_send_input(char *buf, int len, int send_idx);
 uint32_t get_send_scaleX(char *buf, int len, int send_idx);
 uint32_t get_send_scaleY(char *buf, int len, int send_idx);
@@ -69,6 +73,7 @@ void set_analog_format_framerate(float v);
 void set_analog_format_colourspace(const char *s);
 void set_analog_format_color_matrix(int row, int col, float v);
 void set_clock_offset(float v);
+void set_sync_mode(const char *s);
 void set_send_input(int send_idx, int v);
 void set_send_scaleX(int send_idx, float v);
 void set_send_scaleY(int send_idx, float v);
