@@ -17,8 +17,8 @@
 
 typedef struct {
     int fd;
-    struct sockaddr sa;
-    socklen_t sa_len;
+    struct sockaddr_storage addr;
+    socklen_t addr_len;
 } conT;
 
 typedef struct connectionT {
@@ -37,7 +37,6 @@ typedef void     (GenericSetterInt)(int);
 typedef uint32_t (SendGetter)(char *, int, int);
 typedef void     (SendSetterDouble)(int, float);
 
-
 // enum for argument dispatch
 
 typedef enum {
@@ -54,12 +53,9 @@ typedef enum {
 typedef struct {
     char                 *address_match;
     const char           *format;
-    // raw OSC handlers for special cases
     OscHandler           *raw_getter;
     OscHandler           *raw_setter;
-    // which argument form
     osc_argumentE        arg_type;
-    // union for generic vs send callbacks
     union {
         struct {
             GenericGetter       *get;
@@ -118,10 +114,6 @@ int generic_setter_string_wrapper(tosc_message *m, connectionT *c, GenericSetter
 }
 
 int message_to_send_number(tosc_message *m, connectionT *conn) {
-    // /send/x/...
-    //       ^
-    // 0123456
-
     int d = m->buffer[6] - '1';
     if ((d < 0) || (d > 3)) {
         send_error_message(conn, "Invalid send number");
@@ -131,39 +123,25 @@ int message_to_send_number(tosc_message *m, connectionT *conn) {
 }
 
 char message_to_lut_channel(tosc_message *m, connectionT *conn) {
-    // /send/x/lut/c
-    //             ^ 
-    // 0123456789ABC
-
     char c = m->buffer[0xC];
-    if ((c!='Y') || (c!='R') || (c!='G') || (c!='B')) {
+    if (c!='Y' && c!='R' && c!='G' && c!='B') {
         send_error_message(conn, "Invalid LUT channel");
-        return (-1);
+        return -1;
     }
-    return (c);
+    return c;
 }
 
 int message_to_matrix_element(tosc_message *m, connectionT *conn, int *row, int *col) {
-    // /analog_format/color_matrix/r_c
-    // 0123456789ABCDEF0123456789ABCDE
-    //                             ^ ^
-
-    int r, c;
-
-    r = m->buffer[0x1C] - '0';
-    c = m->buffer[0x1E] - '0';
-
+    int r = m->buffer[0x1C] - '0';
+    int c = m->buffer[0x1E] - '0';
     if ((r < 0) || (r > 2) || (c < 0) || (c > 2)) {
         send_error_message(conn, "Matrix index out of bounds");
-        return (-1);
+        return -1;
     } 
-
     *row = r;
     *col = c;
-
-    return (0);
+    return 0;
 }
-
 
 int send_input_set_wrapper(tosc_message *m, connectionT *c) {
     int send_num = message_to_send_number(m, c);
@@ -200,72 +178,53 @@ int send_lut_get_wrapper(tosc_message *m, connectionT *c) {
     if (send_num < 0) return send_num;
 
     char channel = message_to_lut_channel(m, c);
-    if (channel < 0) return (-1);
-    
+    if (channel < 0) return -1;
     switch(channel) {
-        case 'Y': return(get_send_lut_Y(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
-        case 'R': return(get_send_lut_R(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
-        case 'G': return(get_send_lut_G(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
-        case 'B': return(get_send_lut_B(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
+        case 'Y': return get_send_lut_Y(OSC_BUFFER, OSC_BUFFER_SIZE, send_num);
+        case 'R': return get_send_lut_R(OSC_BUFFER, OSC_BUFFER_SIZE, send_num);
+        case 'G': return get_send_lut_G(OSC_BUFFER, OSC_BUFFER_SIZE, send_num);
+        case 'B': return get_send_lut_B(OSC_BUFFER, OSC_BUFFER_SIZE, send_num);
     }
-
-    return(-1); 
+    return -1; 
 }
 
 int send_lut_set_wrapper(tosc_message *m, connectionT *c) {
     float v[32];
     int i;
-
     int send_num = message_to_send_number(m, c);
     if (send_num < 0) return send_num;
 
     char channel = message_to_lut_channel(m, c);
-    if (channel < 0) return (-1);
-
-    // TODO: What if we only send <32 floats??
-    // Need to make tosc_getNext aware of where o->marker is in relation to message length.
-
-    for (i=0; i<32; i++) {
+    if (channel < 0) return -1;
+    for (i = 0; i < 32; i++) {
         v[i] = tosc_getNextFloat(m);
     }
-    
     switch(channel) {
         case 'Y': set_send_lut_Y(send_num, v); break;
         case 'R': set_send_lut_R(send_num, v); break;
         case 'G': set_send_lut_G(send_num, v); break;
         case 'B': set_send_lut_B(send_num, v); break;
     }
-
-    return(0); 
+    return 0; 
 }
 
 int matrix_getter(tosc_message *m, connectionT *c) {
     int row, col;
-    int idx = message_to_matrix_element(m, c, &row, &col);
-
-    if (idx < 0) return (-1);
-
+    if (message_to_matrix_element(m, c, &row, &col) < 0) return -1;
     return get_analog_format_color_matrix(OSC_BUFFER, OSC_BUFFER_SIZE, row, col);
 }
 
 int matrix_setter(tosc_message *m, connectionT *c) {
     int row, col;
     float v;
-    int idx = message_to_matrix_element(m, c, &row, &col);
-
+    if (message_to_matrix_element(m, c, &row, &col) < 0) return -1;
     v = tosc_getNextFloat(m);
-
-    if (idx < 0) return (-1);
-
     set_analog_format_color_matrix(row, col, v);
-
-    return (0);
+    return 0;
 }
-
 
 int sync_all(tosc_message *m, connectionT *c) {
     int len;
-
     len = get_clock_offset(OSC_BUFFER,OSC_BUFFER_SIZE);
     c->send(c, OSC_BUFFER, len);
     len = get_sync_mode(OSC_BUFFER,OSC_BUFFER_SIZE);
@@ -276,11 +235,11 @@ int sync_all(tosc_message *m, connectionT *c) {
     c->send(c, OSC_BUFFER, len);
     len = get_analog_format_colourspace(OSC_BUFFER,OSC_BUFFER_SIZE);
     c->send(c, OSC_BUFFER, len);
-    for(int row=0; row<3; ++row) for(int col=0; col<3; ++col) {
+    for (int row = 0; row < 3; ++row) for (int col = 0; col < 3; ++col) {
         len = get_analog_format_color_matrix(OSC_BUFFER,OSC_BUFFER_SIZE,row,col);
         c->send(c, OSC_BUFFER, len);
     }
-    for (int send_idx=0; send_idx<4; send_idx++) {
+    for (int send_idx = 0; send_idx < 4; send_idx++) {
         len = get_send_input(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
         c->send(c, OSC_BUFFER, len);
         len = get_send_scaleX(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
@@ -314,33 +273,26 @@ int sync_all(tosc_message *m, connectionT *c) {
         len = get_send_lut_B(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
         c->send(c, OSC_BUFFER, len);
     }
-
     ack(m, c);
-
-    return (0);
+    return 0;
 }
-
-
 
 // handler table
 
 osc_handlerT handlers[] = {
-    // addr,                          fmt, raw_get,               raw_set,                arg,              handler
-    { "/ack",                       "",  ack,                     ack,                    OSC_ARG_NONE,   { .generic = { NULL, NULL } } },
-    { "/sync",                      "",  sync_all,                NULL,                   OSC_ARG_NONE,   { .generic = { NULL, NULL } } },
-    { "/sync_mode",                 "s", NULL,                    NULL,                   OSC_ARG_STRING, { .string = {get_sync_mode, set_sync_mode} } } ,
-
-    { "/analog_format/resolution",  "s",  NULL,                   NULL,                   OSC_ARG_STRING, { .string = { get_analog_format_resolution, set_analog_format_resolution} } },
-    { "/analog_format/framerate",   "s",  NULL,                   NULL,                   OSC_ARG_FLOAT,  { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
-    { "/analog_format/colourspace", "s",  NULL,                   NULL,                   OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
-    { "/analog_format/colorspace",  "s",  NULL,                   NULL,                   OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
-    { "/analog_format/color_matrix/[0-2]_[0-2]", "f", matrix_getter, matrix_setter,       OSC_ARG_FLOAT, { .generic = {NULL, NULL} }  },
+    { "/ack", "",  ack,                     ack,                    OSC_ARG_NONE,   { .generic = { NULL, NULL } } },
+    { "/sync", "",  sync_all,                NULL,                   OSC_ARG_NONE,   { .generic = { NULL, NULL } } },
+    { "/sync_mode", "s", NULL,                NULL,                   OSC_ARG_STRING, { .string  = { get_sync_mode, set_sync_mode } } },
+    { "/analog_format/resolution",  "s", NULL, NULL, OSC_ARG_STRING, { .string = { get_analog_format_resolution, set_analog_format_resolution } } },
+    { "/analog_format/framerate",   "s", NULL, NULL, OSC_ARG_FLOAT,  { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
+    { "/analog_format/colourspace","s", NULL, NULL, OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
+    { "/analog_format/colorspace",  "s", NULL, NULL, OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
+    { "/analog_format/color_matrix/[0-2]_[0-2]", "f", matrix_getter, matrix_setter, OSC_ARG_FLOAT, { .generic = { NULL, NULL } } },
     { "/clock_offset",              "f",  NULL,                   NULL,                   OSC_ARG_INT ,   { .integer = { get_clock_offset, set_clock_offset } } },
 
-    { "/send/[1-4]/lut/[YRGB]",     "L",  send_lut_get_wrapper,   send_lut_set_wrapper,   OSC_ARG_LUT, { .generic = {NULL, NULL} } },
-    { "/send/[1-4]/input",         "i",   NULL,                   send_input_set_wrapper, OSC_ARG_INT,     { .send    = { get_send_input, NULL } } },
+    { "/send/[1-4]/lut/[YRGB]",     "L",  send_lut_get_wrapper,   send_lut_set_wrapper,   OSC_ARG_LUT,    { .generic = { NULL, NULL } } },
+    { "/send/[1-4]/input",         "i",   NULL,                   send_input_set_wrapper, OSC_ARG_INT,    { .send    = { get_send_input, NULL } } },
 
-    // send-indexed floats
     #define SEND_ENTRY(path, getter, setter) \
       { path, "f", NULL, NULL, OSC_ARG_SEND_FLOAT, { .send = { getter, setter } } }
 
@@ -367,32 +319,25 @@ void dispatch_message(tosc_message *osc, connectionT *conn) {
         if (!globmatch(osc->buffer, h->address_match))
             continue;
 
-        // GET (no args)
-        if (osc->format[0] == '\0') {
+        if (h->format[0] == '\0') {
             if (h->raw_getter) {
                 h->raw_getter(osc, conn);
-            }
-            else if (h->handler.generic.get) {
+            } else if (h->handler.generic.get) {
                 generic_getter_wrapper(osc, conn, h->handler.generic.get);
             } else if (h->handler.string.get) {
                 generic_getter_wrapper(osc, conn, h->handler.string.get);
             } else if (h->handler.send.get) {
                 send_getter_wrapper(osc, conn, h->handler.send.get);
-            }
-            else {
+            } else {
                 send_error_message(conn, "no getter");
             }
             return;
         }
 
-        // SET
         if (strcmp(h->format, osc->format) != 0) {
-            if (!(h->arg_type == OSC_ARG_LUT)) {
+            if (h->arg_type != OSC_ARG_LUT ||
+                strcmp(osc->format, "ffffffffffffffffffffffffffffffff") != 0) {
                 send_error_message(conn, "format mismatch");
-                return;
-            } else if (strcmp(osc->format, "ffffffffffffffffffffffffffffffff") != 0) {
-                send_error_message(conn, "LUTs require 32 float arguments: 16 (x,y) pairs");
-                send_error_message(conn, osc->format);
                 return;
             }
         }
@@ -418,38 +363,48 @@ void dispatch_message(tosc_message *osc, connectionT *conn) {
         return;
     }
 
-    // no match
     send_error_message(conn, "invalid address");
 }
 
 // debug send wrapper
 
 size_t send_wrapper(connectionT *conn, const void *buf, size_t len) {
-    int i;
-    char *buffer = (char *) buf;
-    printf("SENDING: ");
-    for (i = 0; i < len; i++) {
-        if (isprint((unsigned char)buffer[i])) printf("%c", buffer[i]);
-        else printf("(%02X)", buffer[i]);
-    }
-    printf("\n");
+    ssize_t sent = sendto(
+        conn->con.fd,
+        buf, len,
+        0,
+        (struct sockaddr *)&conn->con.addr,
+        conn->con.addr_len
+    );
 
-    conn->con.sa_len = sizeof(conn->con.sa);
-    errno = 0;
-    int sent = sendto(conn->con.fd, buf, len, 0, &conn->con.sa, conn->con.sa_len);
-    if (errno) {
+    if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
         fd_set wfds;
-        FD_ZERO(&wfds);
-        FD_SET(conn->con.fd, &wfds);
-        if (select(conn->con.fd+1, NULL, &wfds, NULL, NULL) > 0) {
-            sent = sendto(conn->con.fd, buf, len, 0, &conn->con.sa, conn->con.sa_len);
-            if (sent<0) {
-                perror("sending");
+        for (;;) {
+            FD_ZERO(&wfds);
+            FD_SET(conn->con.fd, &wfds);
+            int r = select(conn->con.fd + 1, NULL, &wfds, NULL, NULL);
+            if (r < 0) {
+                if (errno == EINTR) continue;
+                perror("select");
+                return -1;
+            }
+            if (FD_ISSET(conn->con.fd, &wfds)) {
+                sent = sendto(
+                    conn->con.fd,
+                    buf, len,
+                    0,
+                    (struct sockaddr *)&conn->con.addr,
+                    conn->con.addr_len
+                );
+                if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) continue;
+                break;
             }
         }
+    } else if (sent < 0) {
+        perror("sendto");
     }
 
-    return sent;
+    return (size_t)sent;
 }
 
 // main loop
@@ -463,7 +418,7 @@ static void sigintHandler(int x) {
 
 int main(int argc, char *argv[]) {
     char buffer[2048];
-    connectionT conn;
+    connectionT conn = {0};
     conn.send = send_wrapper;
 
     signal(SIGINT, sigintHandler);
@@ -485,10 +440,15 @@ int main(int argc, char *argv[]) {
         FD_ZERO(&readSet);
         FD_SET(conn.con.fd, &readSet);
         struct timeval timeout = {1, 0};
-        if (select(conn.con.fd+1, &readSet, NULL, NULL, &timeout) > 0) {
+        if (select(conn.con.fd + 1, &readSet, NULL, NULL, &timeout) > 0) {
             int len;
-            while ((len = (int)recvfrom(conn.con.fd, buffer, sizeof(buffer), 0,
-                                          &conn.con.sa, &conn.con.sa_len)) > 0) {
+            conn.con.addr_len = sizeof(conn.con.addr);
+            while ((len = (int)recvfrom(
+                conn.con.fd,
+                buffer, sizeof(buffer), 0,
+                (struct sockaddr *)&conn.con.addr,
+                &conn.con.addr_len
+            )) > 0) {
                 printf("RECEIVED [%s]\n", buffer);
                 if (tosc_isBundle(buffer)) {
                     tosc_bundle bundle;
