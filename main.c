@@ -6,18 +6,18 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>
-
 #include <string.h>
-
 #include <errno.h>
 
 #include "globmatch.h"
 #include "tinyosc.h"
 #include "osc_config.h"
 
+// connection wrapper
+
 typedef struct {
     int fd;
-    struct sockaddr sa; 
+    struct sockaddr sa;
     socklen_t sa_len;
 } conT;
 
@@ -27,255 +27,293 @@ typedef struct connectionT {
     size_t (*receive)(struct connectionT *, const void *, size_t);
 } connectionT;
 
-typedef int (OscHandler)(tosc_message *, connectionT *);
+// basic handler types
+
+typedef int  (OscHandler)(tosc_message *, connectionT *);
 typedef uint32_t (GenericGetter)(char *, int);
-typedef void (GenericSetterDouble)(double);
+typedef void     (GenericSetterDouble)(double);
+typedef void     (GenericSetterString)(const char *);
 typedef uint32_t (SendGetter)(char *, int, int);
 typedef void     (SendSetterDouble)(int, double);
 
+// 1) enum for argument dispatch
+
+typedef enum {
+    OSC_ARG_NONE,       // raw handlers only
+    OSC_ARG_INT,        // integer setter/getter
+    OSC_ARG_FLOAT,      // generic float get/set
+    OSC_ARG_STRING,     // generic string get/set
+    OSC_ARG_SEND_FLOAT  // send-indexed float get/set
+} osc_argumentT;
+
+// 2) unified handler struct
+
 typedef struct {
-    char *address_match;
-    char *format;
-    // For special purpose addresses
-    OscHandler *getter;
-    OscHandler *setter;
-    // For generic/double addresses
-    GenericGetter *generic_getter;
-    GenericSetterDouble *generic_setter_double;
-    // For "/send/[1-4]/..." generic/double
-    SendGetter *send_getter;
-    SendSetterDouble *send_setter_double;
+    char                 *address_match;
+    const char           *format;
+    // raw OSC handlers for special cases or INT
+    OscHandler           *raw_getter;
+    OscHandler           *raw_setter;
+    // which argument form
+    osc_argumentT     arg_type;
+    // union for generic vs send callbacks
+    union {
+        struct {
+            GenericGetter       *get;
+            GenericSetterDouble *set;
+        } generic;
+        struct {
+            GenericGetter       *get;
+            GenericSetterString *set;
+        } string;
+        struct {
+            SendGetter          *get;
+            SendSetterDouble    *set;
+        } send;
+    } handler;
 } osc_handlerT;
 
 #define OSC_BUFFER_SIZE 1024
 char OSC_BUFFER[OSC_BUFFER_SIZE];
 
+// error reply
 
 void send_error_message(connectionT *conn, char *text) {
-    int len;
-    len = tosc_writeMessage(OSC_BUFFER, OSC_BUFFER_SIZE, "/error", "s", text);
+    int len = tosc_writeMessage(OSC_BUFFER, OSC_BUFFER_SIZE, "/error", "s", text);
     conn->send(conn, OSC_BUFFER, len);
 }
 
+// special ack
+
 int ack(tosc_message *message, connectionT *conn) {
-    int len;
-    len = tosc_writeMessage(OSC_BUFFER, OSC_BUFFER_SIZE, "/ack", "", NULL);
+    int len = tosc_writeMessage(OSC_BUFFER, OSC_BUFFER_SIZE, "/ack", "", NULL);
     conn->send(conn, OSC_BUFFER, len);
-    return(0);
+    return 0;
 }
+
+// wrappers
 
 int generic_getter_wrapper(tosc_message *m, connectionT *c, GenericGetter *getter) {
     int len = getter(OSC_BUFFER, OSC_BUFFER_SIZE);
-    return(c->send(c, OSC_BUFFER, len));
+    return c->send(c, OSC_BUFFER, len);
 }
 
 int generic_setter_double_wrapper(tosc_message *m, connectionT *c, GenericSetterDouble *setter) {
-    // TODO: Range checking?
     float v = tosc_getNextFloat(m);
     setter(v);
-    return(0);
+    return 0;
+}
+
+int generic_setter_string_wrapper(tosc_message *m, connectionT *c, GenericSetterString *setter) {
+    const char *s = tosc_getNextString(m);
+    setter(s);
+    return 0;
 }
 
 int message_to_send_number(tosc_message *m, connectionT *conn) {
-    // "/send/X"
-    //  0123456
     int d = m->buffer[6] - '1';
     if ((d < 0) || (d > 3)) {
         send_error_message(conn, "invalid send number");
-        return (-1);
+        return -1;
     }
-    return(d);
+    return d;
 }
 
 int send_input_set_wrapper(tosc_message *m, connectionT *c) {
     int send_num = message_to_send_number(m, c);
-    if (send_num < 0) return(send_num);
+    if (send_num < 0) return send_num;
 
-    int input_num = tosc_getNextInt32(m);
-    input_num -= 1;
+    int input_num = tosc_getNextInt32(m) - 1;
     if ((input_num < 0) || (input_num > 3)) {
         send_error_message(c, "Invalid input number [1..4]");
-        return(-1);
+        return -1;
     }
     set_send_input(send_num, input_num);
-    return(0);
+    return 0;
 }
 
 int send_getter_wrapper(tosc_message *m, connectionT *c, SendGetter *getter) {
     int send_num = message_to_send_number(m, c);
-    if (send_num < 0) return(send_num);
+    if (send_num < 0) return send_num;
 
     int len = getter(OSC_BUFFER, OSC_BUFFER_SIZE, send_num);
-    return(c->send(c, OSC_BUFFER, len));
+    return c->send(c, OSC_BUFFER, len);
 }
 
 int send_setter_double_wrapper(tosc_message *m, connectionT *c, SendSetterDouble *setter) {
     int send_num = message_to_send_number(m, c);
-    if (send_num < 0) return(send_num);
+    if (send_num < 0) return send_num;
 
     float v = tosc_getNextFloat(m);
     setter(send_num, v);
-    return(0);
+    return 0;
 }
 
+// 3) handler table
 
 osc_handlerT handlers[] = {
-/*
-**   addr,  type, get, set, generic_get, generic_set, send_get, send_set
-*/
-    {"/ack", "", ack, ack, NULL, NULL, NULL, NULL,},
-        // TODO: special setter for string resolution
-    {"/analog_format/resolution", "s", NULL, NULL, get_analog_format_resolution, NULL,  NULL, NULL},
-    {"/analog_format/framerate", "s", NULL, NULL, get_analog_format_framerate, set_analog_format_framerate,  NULL, NULL},
-        // TODO: special setter for string colorspace 
-    {"/analog_format/colourspace", "s", NULL, NULL, get_analog_format_colourspace, NULL,  NULL, NULL},
-    {"/analog_format/colorspace", "s", NULL, NULL, get_analog_format_colourspace, NULL,  NULL, NULL},
-    {"/clock_offset", "f", NULL, NULL, get_clock_offset, set_clock_offset,  NULL, NULL},
-    {"/send/[1-4]/input", "i", NULL, send_input_set_wrapper, NULL, NULL, get_send_input, NULL}, 
-    {"/send/[1-4]/scaleX", "f", NULL, NULL, NULL, NULL, get_send_scaleX, set_send_scaleX},
-    {"/send/[1-4]/scaleY", "f", NULL, NULL, NULL, NULL, get_send_scaleY, set_send_scaleY},
-    {"/send/[1-4]/posX", "f", NULL, NULL, NULL, NULL, get_send_posX, set_send_posX},
-    {"/send/[1-4]/posY", "f", NULL, NULL, NULL, NULL, get_send_posY, set_send_posY},
-    {"/send/[1-4]/rotation", "f", NULL, NULL, NULL, NULL, get_send_rotation, set_send_rotation},
-    {"/send/[1-4]/pitch", "f", NULL, NULL, NULL, NULL, get_send_pitch, set_send_pitch},
-    {"/send/[1-4]/yaw", "f", NULL, NULL, NULL, NULL, get_send_yaw, set_send_yaw},
-    {"/send/[1-4]/brightness", "f", NULL, NULL, NULL, NULL, get_send_brightness, set_send_brightness},
-    {"/send/[1-4]/contrast", "f", NULL, NULL, NULL, NULL, get_send_contrast, set_send_contrast},
-    {"/send/[1-4]/saturation", "f", NULL, NULL, NULL, NULL, get_send_saturation, set_send_saturation},
-    {"/send/[1-4]/hue", "f", NULL, NULL, NULL, NULL, get_send_hue, set_send_hue},
-    {NULL, NULL, NULL, NULL, NULL, NULL}
+    // addr,                          fmt, raw_get,               raw_set,                arg,              handler
+    { "/ack",                       "",  ack,                    ack,                    OSC_ARG_NONE,    { .generic = { NULL, NULL } } },
+
+    { "/analog_format/resolution",  "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_resolution, set_analog_format_resolution} } },
+    { "/analog_format/framerate",   "s",  NULL,                   NULL,                   OSC_ARG_FLOAT,   { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
+    { "/analog_format/colourspace", "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
+    { "/analog_format/colorspace",  "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
+    { "/clock_offset",              "f",  NULL,                   NULL,                   OSC_ARG_FLOAT,   { .generic = { get_clock_offset, set_clock_offset } } },
+
+    { "/send/[1-4]/input",         "i",   NULL,                   send_input_set_wrapper, OSC_ARG_INT,     { .send    = { get_send_input, NULL } } },
+
+    // send-indexed floats
+    #define SEND_ENTRY(path, getter, setter) \
+      { path, "f", NULL, NULL, OSC_ARG_SEND_FLOAT, { .send = { getter, setter } } }
+
+    SEND_ENTRY("/send/[1-4]/scaleX",      get_send_scaleX,     set_send_scaleX),
+    SEND_ENTRY("/send/[1-4]/scaleY",      get_send_scaleY,     set_send_scaleY),
+    SEND_ENTRY("/send/[1-4]/posX",        get_send_posX,       set_send_posX),
+    SEND_ENTRY("/send/[1-4]/posY",        get_send_posY,       set_send_posY),
+    SEND_ENTRY("/send/[1-4]/rotation",    get_send_rotation,   set_send_rotation),
+    SEND_ENTRY("/send/[1-4]/pitch",       get_send_pitch,      set_send_pitch),
+    SEND_ENTRY("/send/[1-4]/yaw",         get_send_yaw,        set_send_yaw),
+    SEND_ENTRY("/send/[1-4]/brightness",  get_send_brightness, set_send_brightness),
+    SEND_ENTRY("/send/[1-4]/contrast",    get_send_contrast,   set_send_contrast),
+    SEND_ENTRY("/send/[1-4]/saturation",  get_send_saturation, set_send_saturation),
+    SEND_ENTRY("/send/[1-4]/hue",         get_send_hue,        set_send_hue),
+
+    { NULL, NULL, NULL, NULL, OSC_ARG_NONE, { .generic = { NULL, NULL } } }
+    #undef SEND_ENTRY
 };
 
+// 4) dispatch
 
-void dispatch_message (tosc_message *osc, connectionT *conn) {
-    osc_handlerT *h;
-    int i = 0;
+void dispatch_message(tosc_message *osc, connectionT *conn) {
+    for (osc_handlerT *h = handlers; h->address_match; ++h) {
+        if (!globmatch(osc->buffer, h->address_match))
+            continue;
 
-    h = &handlers[i];
-    while (h->address_match) {
-        // osc->buffer points to the address which is \0 terminated
-        if (globmatch(osc->buffer, h->address_match)) {
-            if (osc->format[0] == '\0') {
-                // no format string, means get
-                if (h->getter) {
-                    // If a getter is specified call that
-                    h->getter(osc, conn);
-                } else 
-                if (h->generic_getter) {
-                    generic_getter_wrapper(osc, conn, h->generic_getter);
-                } else
-                if (h->send_getter) {
-                    // If a specific getter for "/send/..." is available, use that
-                    send_getter_wrapper(osc, conn, h->send_getter);
-                } else {
-                    send_error_message(conn, "no getter");
-                }
-            } else {
-                if (!strcmp(h->format, osc->format)) {
-                    // This will set the config, but
-                    // TODO: cache actions to be performed during vsync
-                    if (h->setter) {
-                        h->setter(osc, conn); 
-                    } else 
-                    if (h->generic_setter_double) {
-                        generic_setter_double_wrapper(osc, conn, h->generic_setter_double);    
-                    } else
-                    if (h->send_setter_double) {
-                        send_setter_double_wrapper(osc, conn, h->send_setter_double);
-                    } else {
-                        send_error_message(conn, "no setter");
-                    }
-                } else {
-                    send_error_message(conn, "format mismatch");
-                }
+        // GET (no args)
+        if (osc->format[0] == '\0') {
+            if (h->raw_getter) {
+                h->raw_getter(osc, conn);
             }
-            break;
+            else if (h->handler.generic.get) {
+                generic_getter_wrapper(osc, conn, h->handler.generic.get);
+            } else if (h->handler.string.get) {
+                generic_getter_wrapper(osc, conn, h->handler.string.get);
+            } else if (h->handler.send.get) {
+                send_getter_wrapper(osc, conn, h->handler.send.get);
+            }
+            else {
+                send_error_message(conn, "no getter");
+            }
+            return;
         }
-        h = &handlers[++i];
+
+        // SET
+        if (strcmp(h->format, osc->format) != 0) {
+            send_error_message(conn, "format mismatch");
+            return;
+        }
+
+        if (h->raw_setter) {
+            h->raw_setter(osc, conn);
+            return;
+        }
+
+        switch (h->arg_type) {
+            case OSC_ARG_FLOAT:
+                generic_setter_double_wrapper(osc, conn, h->handler.generic.set);
+                break;
+            case OSC_ARG_STRING:
+                generic_setter_string_wrapper(osc, conn, h->handler.string.set);
+                break;
+            case OSC_ARG_SEND_FLOAT:
+                send_setter_double_wrapper(osc, conn, h->handler.send.set);
+                break;
+            default:
+                send_error_message(conn, "no setter");
+        }
+        return;
     }
 
-    if (!h->address_match) {
-        send_error_message(conn, "invalid address");
-    }
+    // no match
+    send_error_message(conn, "invalid address");
 }
+
+// debug send wrapper
 
 size_t send_wrapper(connectionT *conn, const void *buf, size_t len) {
     int i;
     char *buffer = (char *) buf;
-    printf ("SENDING: ");
-    for (i=0; i<len; i++) if (isprint(buffer[i])) printf ("%c", buffer[i]); else  printf ("(%02X)", buffer[i]);
-    printf ("\n");
+    printf("SENDING: ");
+    for (i = 0; i < len; i++) {
+        if (isprint((unsigned char)buffer[i])) printf("%c", buffer[i]);
+        else printf("(%02X)", buffer[i]);
+    }
+    printf("\n");
 
     conn->con.sa_len = sizeof(conn->con.sa);
-
     errno = 0;
-    i =  sendto(conn->con.fd, buf, len, 0, &conn->con.sa, conn->con.sa_len);
-    if (errno) {
-        perror("sending");
-    }
-
-    return (i);
+    int sent = sendto(conn->con.fd, buf, len, 0, &conn->con.sa, conn->con.sa_len);
+    if (errno) perror("sending");
+    return sent;
 }
 
+// main loop
 
 bool keepRunning = true;
 
 static void sigintHandler(int x) {
-  keepRunning = false;
+    (void)x;
+    keepRunning = false;
 }
 
-
 int main(int argc, char *argv[]) {
-  char buffer[2048];
-  connectionT conn;
-    
-  conn.send = send_wrapper;
+    char buffer[2048];
+    connectionT conn;
+    conn.send = send_wrapper;
 
-  // register the SIGINT handler (Ctrl+C)
-  signal(SIGINT, &sigintHandler);
+    signal(SIGINT, sigintHandler);
 
-  // open a socket to listen for datagrams (i.e. UDP packets) on port 9000
-  conn.con.fd = socket(AF_INET, SOCK_DGRAM, 0);
-  fcntl(conn.con.fd, F_SETFL, O_NONBLOCK); // set the socket to non-blocking
+    conn.con.fd = socket(AF_INET, SOCK_DGRAM, 0);
+    fcntl(conn.con.fd, F_SETFL, O_NONBLOCK);
 
-  struct sockaddr_in sin;
+    struct sockaddr_in sin = {0};
+    sin.sin_family = AF_INET;
+    sin.sin_port   = htons(9000);
+    sin.sin_addr.s_addr = INADDR_ANY;
+    bind(conn.con.fd, (struct sockaddr *)&sin, sizeof(sin));
 
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons(9000);
-  sin.sin_addr.s_addr = INADDR_ANY;
-  bind(conn.con.fd, (struct sockaddr *) &sin, sizeof(struct sockaddr_in));
+    printf("tinyosc is now listening on port 9000.\n");
+    printf("Press Ctrl+C to stop.\n");
 
-  printf("tinyosc is now listening on port 9000.\n");
-  printf("Press Ctrl+C to stop.\n");
-
-  while (keepRunning) {
-    fd_set readSet;
-    FD_ZERO(&readSet);
-    FD_SET(conn.con.fd, &readSet);
-    struct timeval timeout = {1, 0}; // select times out after 1 second
-    if (select(conn.con.fd+1, &readSet, NULL, NULL, &timeout) > 0) {
-      int len = 0;
-      while ((len = (int) recvfrom(conn.con.fd, buffer, sizeof(buffer), 0, &conn.con.sa, &conn.con.sa_len)) > 0) {
-        printf ("RECEIVED [%s]\n", buffer);
-        if (tosc_isBundle(buffer)) {
-          tosc_bundle bundle;
-          tosc_parseBundle(&bundle, buffer, len);
-          const uint64_t timetag = tosc_getTimetag(&bundle);
-          printf ("Timetag: %llu\n", timetag);
-          tosc_message osc;
-          while (tosc_getNextMessage(&bundle, &osc)) {
-            dispatch_message(&osc, &conn);
-          }
-        } else {
-          tosc_message osc;
-          tosc_parseMessage(&osc, buffer, len);
-          dispatch_message(&osc, &conn);
+    while (keepRunning) {
+        fd_set readSet;
+        FD_ZERO(&readSet);
+        FD_SET(conn.con.fd, &readSet);
+        struct timeval timeout = {1, 0};
+        if (select(conn.con.fd+1, &readSet, NULL, NULL, &timeout) > 0) {
+            int len;
+            while ((len = (int)recvfrom(conn.con.fd, buffer, sizeof(buffer), 0,
+                                          &conn.con.sa, &conn.con.sa_len)) > 0) {
+                printf("RECEIVED [%s]\n", buffer);
+                if (tosc_isBundle(buffer)) {
+                    tosc_bundle bundle;
+                    tosc_parseBundle(&bundle, buffer, len);
+                    uint64_t timetag = tosc_getTimetag(&bundle);
+                    printf("Timetag: %llu\n", (unsigned long long)timetag);
+                    tosc_message osc;
+                    while (tosc_getNextMessage(&bundle, &osc)) {
+                        dispatch_message(&osc, &conn);
+                    }
+                } else {
+                    tosc_message osc;
+                    tosc_parseMessage(&osc, buffer, len);
+                    dispatch_message(&osc, &conn);
+                }
+            }
         }
-      }
     }
-  }
 
-  close(conn.con.fd);
-
-  return 0;
+    close(conn.con.fd);
+    return 0;
 }
