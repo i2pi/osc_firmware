@@ -28,14 +28,21 @@ typedef struct connectionT {
 } connectionT;
 
 typedef int (OscHandler)(tosc_message *, connectionT *);
+typedef uint32_t (GenericGetter)(char *, int);
+typedef void (GenericSetterDouble)(double);
 typedef uint32_t (SendGetter)(char *, int, int);
 typedef void     (SendSetterDouble)(int, double);
 
 typedef struct {
     char *address_match;
     char *format;
+    // For special purpose addresses
     OscHandler *getter;
     OscHandler *setter;
+    // For generic/double addresses
+    GenericGetter *generic_getter;
+    GenericSetterDouble *generic_setter_double;
+    // For "/send/[1-4]/..." generic/double
     SendGetter *send_getter;
     SendSetterDouble *send_setter_double;
 } bioscc_handlerT;
@@ -57,6 +64,18 @@ int ack(tosc_message *message, connectionT *conn) {
     return(0);
 }
 
+int generic_getter_wrapper(tosc_message *m, connectionT *c, GenericGetter *getter) {
+    int len = getter(OSC_BUFFER, OSC_BUFFER_SIZE);
+    return(c->send(c, OSC_BUFFER, len));
+}
+
+int generic_setter_double_wrapper(tosc_message *m, connectionT *c, GenericSetterDouble *setter) {
+    // TODO: Range checking?
+    float v = tosc_getNextFloat(m);
+    setter(v);
+    return(0);
+}
+
 int message_to_send_number(tosc_message *m, connectionT *conn) {
     // "/send/X"
     //  0123456
@@ -66,12 +85,6 @@ int message_to_send_number(tosc_message *m, connectionT *conn) {
         return (-1);
     }
     return(d);
-}
-
-int send_input_get_wrapper(tosc_message *m, connectionT *c) {
-    int send_num = message_to_send_number(m, c);
-    if (send_num < 0) return(send_num);
-    return (get_send_input(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
 }
 
 int send_input_set_wrapper(tosc_message *m, connectionT *c) {
@@ -92,7 +105,8 @@ int send_getter_wrapper(tosc_message *m, connectionT *c, SendGetter *getter) {
     int send_num = message_to_send_number(m, c);
     if (send_num < 0) return(send_num);
 
-    return (getter(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
+    int len = getter(OSC_BUFFER, OSC_BUFFER_SIZE, send_num);
+    return(c->send(c, OSC_BUFFER, len));
 }
 
 int send_setter_double_wrapper(tosc_message *m, connectionT *c, SendSetterDouble *setter) {
@@ -106,20 +120,30 @@ int send_setter_double_wrapper(tosc_message *m, connectionT *c, SendSetterDouble
 
 
 bioscc_handlerT handlers[] = {
-    {"/ack", "", ack, ack, NULL, NULL},
-    {"/send/[1-4]/input", "i", send_input_get_wrapper, send_input_set_wrapper, NULL, NULL}, 
-    {"/send/[1-4]/scaleX", "f", NULL, NULL, get_send_scaleX, set_send_scaleX},
-    {"/send/[1-4]/scaleY", "f", NULL, NULL, get_send_scaleY, set_send_scaleY},
-    {"/send/[1-4]/posX", "f", NULL, NULL, get_send_posX, set_send_posX},
-    {"/send/[1-4]/posY", "f", NULL, NULL, get_send_posY, set_send_posY},
-    {"/send/[1-4]/rotation", "f", NULL, NULL, get_send_rotation, set_send_rotation},
-    {"/send/[1-4]/pitch", "f", NULL, NULL, get_send_pitch, set_send_pitch},
-    {"/send/[1-4]/yaw", "f", NULL, NULL, get_send_yaw, set_send_yaw},
-    {"/send/[1-4]/brightness", "f", NULL, NULL, get_send_brightness, set_send_brightness},
-    {"/send/[1-4]/contrast", "f", NULL, NULL, get_send_contrast, set_send_contrast},
-    {"/send/[1-4]/saturation", "f", NULL, NULL, get_send_saturation, set_send_saturation},
-    {"/send/[1-4]/hue", "f", NULL, NULL, get_send_hue, set_send_hue},
-    {NULL, NULL, NULL, NULL}
+/*
+**   addr,  type, get, set, generic_get, generic_set, send_get, send_set
+*/
+    {"/ack", "", ack, ack, NULL, NULL, NULL, NULL,},
+        // TODO: special setter for string resolution
+    {"/analog_format/resolution", "s", NULL, NULL, get_analog_format_resolution, NULL,  NULL, NULL},
+    {"/analog_format/framerate", "s", NULL, NULL, get_analog_format_framerate, set_analog_format_framerate,  NULL, NULL},
+        // TODO: special setter for string colorspace 
+    {"/analog_format/colourspace", "s", NULL, NULL, get_analog_format_colourspace, NULL,  NULL, NULL},
+    {"/analog_format/colorspace", "s", NULL, NULL, get_analog_format_colourspace, NULL,  NULL, NULL},
+    {"/clock_offset", "f", NULL, NULL, get_clock_offset, set_clock_offset,  NULL, NULL},
+    {"/send/[1-4]/input", "i", NULL, send_input_set_wrapper, NULL, NULL, get_send_input, NULL}, 
+    {"/send/[1-4]/scaleX", "f", NULL, NULL, NULL, NULL, get_send_scaleX, set_send_scaleX},
+    {"/send/[1-4]/scaleY", "f", NULL, NULL, NULL, NULL, get_send_scaleY, set_send_scaleY},
+    {"/send/[1-4]/posX", "f", NULL, NULL, NULL, NULL, get_send_posX, set_send_posX},
+    {"/send/[1-4]/posY", "f", NULL, NULL, NULL, NULL, get_send_posY, set_send_posY},
+    {"/send/[1-4]/rotation", "f", NULL, NULL, NULL, NULL, get_send_rotation, set_send_rotation},
+    {"/send/[1-4]/pitch", "f", NULL, NULL, NULL, NULL, get_send_pitch, set_send_pitch},
+    {"/send/[1-4]/yaw", "f", NULL, NULL, NULL, NULL, get_send_yaw, set_send_yaw},
+    {"/send/[1-4]/brightness", "f", NULL, NULL, NULL, NULL, get_send_brightness, set_send_brightness},
+    {"/send/[1-4]/contrast", "f", NULL, NULL, NULL, NULL, get_send_contrast, set_send_contrast},
+    {"/send/[1-4]/saturation", "f", NULL, NULL, NULL, NULL, get_send_saturation, set_send_saturation},
+    {"/send/[1-4]/hue", "f", NULL, NULL, NULL, NULL, get_send_hue, set_send_hue},
+    {NULL, NULL, NULL, NULL, NULL, NULL}
 };
 
 
@@ -137,6 +161,9 @@ void dispatch_message (tosc_message *osc, connectionT *conn) {
                     // If a getter is specified call that
                     h->getter(osc, conn);
                 } else 
+                if (h->generic_getter) {
+                    generic_getter_wrapper(osc, conn, h->generic_getter);
+                } else
                 if (h->send_getter) {
                     // If a specific getter for "/send/..." is available, use that
                     send_getter_wrapper(osc, conn, h->send_getter);
@@ -150,6 +177,9 @@ void dispatch_message (tosc_message *osc, connectionT *conn) {
                     if (h->setter) {
                         h->setter(osc, conn); 
                     } else 
+                    if (h->generic_setter_double) {
+                        generic_setter_double_wrapper(osc, conn, h->generic_setter_double);    
+                    } else
                     if (h->send_setter_double) {
                         send_setter_double_wrapper(osc, conn, h->send_setter_double);
                     } else {
