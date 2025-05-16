@@ -45,7 +45,7 @@ typedef struct {
     // For "/send/[1-4]/..." generic/double
     SendGetter *send_getter;
     SendSetterDouble *send_setter_double;
-} bioscc_handlerT;
+} osc_handlerT;
 
 #define OSC_BUFFER_SIZE 1024
 char OSC_BUFFER[OSC_BUFFER_SIZE];
@@ -119,7 +119,7 @@ int send_setter_double_wrapper(tosc_message *m, connectionT *c, SendSetterDouble
 }
 
 
-bioscc_handlerT handlers[] = {
+osc_handlerT handlers[] = {
 /*
 **   addr,  type, get, set, generic_get, generic_set, send_get, send_set
 */
@@ -148,7 +148,7 @@ bioscc_handlerT handlers[] = {
 
 
 void dispatch_message (tosc_message *osc, connectionT *conn) {
-    bioscc_handlerT *h;
+    osc_handlerT *h;
     int i = 0;
 
     h = &handlers[i];
