@@ -41,7 +41,7 @@ typedef struct ConfigSend {
 
 typedef struct Config {
   ConfigAnalogFormat analog_format;
-  float clock_offset;
+  int clock_offset;
   char sync_mode[CONFIG_MAX_STR_LEN];
   ConfigSend send[4];
 } Config;
@@ -72,7 +72,7 @@ void set_analog_format_resolution(const char *s);
 void set_analog_format_framerate(float v);
 void set_analog_format_colourspace(const char *s);
 void set_analog_format_color_matrix(int row, int col, float v);
-void set_clock_offset(float v);
+void set_clock_offset(int v);
 void set_sync_mode(const char *s);
 void set_send_input(int send_idx, int v);
 void set_send_scaleX(int send_idx, float v);
@@ -90,6 +90,5 @@ void set_send_lut_Y(int send_idx, float *v);
 void set_send_lut_R(int send_idx, float *v);
 void set_send_lut_G(int send_idx, float *v);
 void set_send_lut_B(int send_idx, float *v);
-void sync_all(char *buf, int len);
 
 #endif 

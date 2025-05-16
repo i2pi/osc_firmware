@@ -16,7 +16,7 @@ Config config =
       { 0.0, 0.0, 1.0 }
     }
   },
-  .clock_offset = 0.0,
+  .clock_offset = 0,
   .sync_mode = "locked",
   .send = {
     {
@@ -145,9 +145,9 @@ void set_analog_format_color_matrix(int row, int col, float v) { config.analog_f
 uint32_t get_clock_offset(char *buf, int len) {
   char address[OSC_BUF_SIZE];
   snprintf(address, OSC_BUF_SIZE-1, "/clock_offset");
-  return tosc_writeMessage(buf, len, address, "f", config.clock_offset);
+  return tosc_writeMessage(buf, len, address, "i", config.clock_offset);
 }
-void set_clock_offset(float v) { config.clock_offset = v; }
+void set_clock_offset(int v) { config.clock_offset = v; }
 
 /*
 ** sync_mode
@@ -165,7 +165,7 @@ void set_sync_mode(const char *s) { strncpy(config.sync_mode, s, CONFIG_MAX_STR_
 uint32_t get_send_input(char *buf, int len, int send_idx) {
   char address[OSC_BUF_SIZE];
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/input",send_idx);
-  return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].input);
+  return tosc_writeMessage(buf, len, address, "i", config.send[send_idx].input);
 }
 void set_send_input(int send_idx, int v) { config.send[send_idx].input = v; }
 /*
@@ -435,31 +435,3 @@ uint32_t get_send_lut_B(char *buf, int len, int send_idx) {
   );
 }
 void set_send_lut_B(int send_idx, float *v) { memcpy(config.send[send_idx].lut.B, v, sizeof(float) * 32); }
-// Generated sync_all routine
-void sync_all(char *buf, int len) {
-  get_analog_format_resolution(buf,len);
-  get_analog_format_framerate(buf,len);
-  get_analog_format_colourspace(buf,len);
-  for(int row=0; row<3; ++row) for(int col=0; col<3; ++col) get_analog_format_color_matrix(buf,len,row,col);
-  get_clock_offset(buf,len);
-  for (int send_idx=0; send_idx<4; send_idx++) {
-    get_send_input(buf,len,send_idx);
-    get_send_scaleX(buf,len,send_idx);
-    get_send_scaleY(buf,len,send_idx);
-    get_send_posX(buf,len,send_idx);
-    get_send_posY(buf,len,send_idx);
-    get_send_rotation(buf,len,send_idx);
-    get_send_pitch(buf,len,send_idx);
-    get_send_yaw(buf,len,send_idx);
-    get_send_brightness(buf,len,send_idx);
-    get_send_contrast(buf,len,send_idx);
-    get_send_saturation(buf,len,send_idx);
-    get_send_hue(buf,len,send_idx);
-    get_send_lut_Y(buf,len,send_idx);
-    get_send_lut_R(buf,len,send_idx);
-    get_send_lut_G(buf,len,send_idx);
-    get_send_lut_B(buf,len,send_idx);
-  }
-}
-
-

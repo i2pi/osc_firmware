@@ -33,6 +33,7 @@ typedef int  (OscHandler)(tosc_message *, connectionT *);
 typedef uint32_t (GenericGetter)(char *, int);
 typedef void     (GenericSetterDouble)(float);
 typedef void     (GenericSetterString)(const char *);
+typedef void     (GenericSetterInt)(int);
 typedef uint32_t (SendGetter)(char *, int, int);
 typedef void     (SendSetterDouble)(int, float);
 
@@ -53,13 +54,17 @@ typedef enum {
 typedef struct {
     char                 *address_match;
     const char           *format;
-    // raw OSC handlers for special cases or INT
+    // raw OSC handlers for special cases
     OscHandler           *raw_getter;
     OscHandler           *raw_setter;
     // which argument form
     osc_argumentE        arg_type;
     // union for generic vs send callbacks
     union {
+        struct {
+            GenericGetter       *get;
+            GenericSetterInt    *set; 
+        } integer;
         struct {
             GenericGetter       *get;
             GenericSetterDouble *set;
@@ -257,8 +262,61 @@ int matrix_setter(tosc_message *m, connectionT *c) {
     return (0);
 }
 
-int sync_wrapper(tosc_message *m, connectionT *c) {
-    sync_all(OSC_BUFFER, OSC_BUFFER_SIZE);
+
+int sync_all(tosc_message *m, connectionT *c) {
+    int len;
+
+    len = get_clock_offset(OSC_BUFFER,OSC_BUFFER_SIZE);
+    c->send(c, OSC_BUFFER, len);
+    len = get_sync_mode(OSC_BUFFER,OSC_BUFFER_SIZE);
+    c->send(c, OSC_BUFFER, len);
+    len = get_analog_format_resolution(OSC_BUFFER,OSC_BUFFER_SIZE);
+    c->send(c, OSC_BUFFER, len);
+    len = get_analog_format_framerate(OSC_BUFFER,OSC_BUFFER_SIZE);
+    c->send(c, OSC_BUFFER, len);
+    len = get_analog_format_colourspace(OSC_BUFFER,OSC_BUFFER_SIZE);
+    c->send(c, OSC_BUFFER, len);
+    for(int row=0; row<3; ++row) for(int col=0; col<3; ++col) {
+        len = get_analog_format_color_matrix(OSC_BUFFER,OSC_BUFFER_SIZE,row,col);
+        c->send(c, OSC_BUFFER, len);
+    }
+    for (int send_idx=0; send_idx<4; send_idx++) {
+        len = get_send_input(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_scaleX(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_scaleY(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_posX(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_posY(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_rotation(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_pitch(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_yaw(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_brightness(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_contrast(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_saturation(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_hue(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_lut_Y(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_lut_R(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_lut_G(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_send_lut_B(OSC_BUFFER,OSC_BUFFER_SIZE,send_idx);
+        c->send(c, OSC_BUFFER, len);
+    }
+
+    ack(m, c);
+
     return (0);
 }
 
@@ -268,16 +326,16 @@ int sync_wrapper(tosc_message *m, connectionT *c) {
 
 osc_handlerT handlers[] = {
     // addr,                          fmt, raw_get,               raw_set,                arg,              handler
-    { "/ack",                       "",  ack,                    ack,                    OSC_ARG_NONE,    { .generic = { NULL, NULL } } },
-    { "/sync",                      "",  sync_wrapper,            NULL,                   OSC_ARG_NONE,   { .generic = { NULL, NULL } } },
+    { "/ack",                       "",  ack,                     ack,                    OSC_ARG_NONE,   { .generic = { NULL, NULL } } },
+    { "/sync",                      "",  sync_all,                NULL,                   OSC_ARG_NONE,   { .generic = { NULL, NULL } } },
     { "/sync_mode",                 "s", NULL,                    NULL,                   OSC_ARG_STRING, { .string = {get_sync_mode, set_sync_mode} } } ,
 
-    { "/analog_format/resolution",  "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_resolution, set_analog_format_resolution} } },
-    { "/analog_format/framerate",   "s",  NULL,                   NULL,                   OSC_ARG_FLOAT,   { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
-    { "/analog_format/colourspace", "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
-    { "/analog_format/colorspace",  "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
+    { "/analog_format/resolution",  "s",  NULL,                   NULL,                   OSC_ARG_STRING, { .string = { get_analog_format_resolution, set_analog_format_resolution} } },
+    { "/analog_format/framerate",   "s",  NULL,                   NULL,                   OSC_ARG_FLOAT,  { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
+    { "/analog_format/colourspace", "s",  NULL,                   NULL,                   OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
+    { "/analog_format/colorspace",  "s",  NULL,                   NULL,                   OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
     { "/analog_format/color_matrix/[0-2]_[0-2]", "f", matrix_getter, matrix_setter,       OSC_ARG_FLOAT, { .generic = {NULL, NULL} }  },
-    { "/clock_offset",              "f",  NULL,                   NULL,                   OSC_ARG_FLOAT,   { .generic = { get_clock_offset, set_clock_offset } } },
+    { "/clock_offset",              "f",  NULL,                   NULL,                   OSC_ARG_INT ,   { .integer = { get_clock_offset, set_clock_offset } } },
 
     { "/send/[1-4]/lut/[YRGB]",     "L",  send_lut_get_wrapper,   send_lut_set_wrapper,   OSC_ARG_LUT, { .generic = {NULL, NULL} } },
     { "/send/[1-4]/input",         "i",   NULL,                   send_input_set_wrapper, OSC_ARG_INT,     { .send    = { get_send_input, NULL } } },
@@ -379,7 +437,18 @@ size_t send_wrapper(connectionT *conn, const void *buf, size_t len) {
     conn->con.sa_len = sizeof(conn->con.sa);
     errno = 0;
     int sent = sendto(conn->con.fd, buf, len, 0, &conn->con.sa, conn->con.sa_len);
-    if (errno) perror("sending");
+    if (errno) {
+        fd_set wfds;
+        FD_ZERO(&wfds);
+        FD_SET(conn->con.fd, &wfds);
+        if (select(conn->con.fd+1, NULL, &wfds, NULL, NULL) > 0) {
+            sent = sendto(conn->con.fd, buf, len, 0, &conn->con.sa, conn->con.sa_len);
+            if (sent<0) {
+                perror("sending");
+            }
+        }
+    }
+
     return sent;
 }
 
