@@ -9,37 +9,37 @@
 
 typedef struct ConfigAnalogFormat {
   const char* resolution;
-  double framerate;
+  float framerate;
   const char* colourspace;
-  double color_matrix[3][3];
+  float color_matrix[3][3];
 } ConfigAnalogFormat;
 
 typedef struct ConfigSendLut {
-  double Y[32];
-  double R[32];
-  double G[32];
-  double B[32];
+  float Y[32];
+  float R[32];
+  float G[32];
+  float B[32];
 } ConfigSendLut;
 
 typedef struct ConfigSend {
   int input;
-  double scaleX;
-  double scaleY;
-  double posX;
-  double posY;
-  double rotation;
-  double pitch;
-  double yaw;
-  double brightness;
-  double contrast;
-  double saturation;
-  double hue;
+  float scaleX;
+  float scaleY;
+  float posX;
+  float posY;
+  float rotation;
+  float pitch;
+  float yaw;
+  float brightness;
+  float contrast;
+  float saturation;
+  float hue;
   ConfigSendLut lut;
 } ConfigSend;
 
 typedef struct Config {
   ConfigAnalogFormat analog_format;
-  double clock_offset;
+  float clock_offset;
   ConfigSend send[4];
 } Config;
 
@@ -65,26 +65,26 @@ uint32_t get_send_lut_R(char *buf, int len, int send_idx);
 uint32_t get_send_lut_G(char *buf, int len, int send_idx);
 uint32_t get_send_lut_B(char *buf, int len, int send_idx);
 void set_analog_format_resolution(const char *s);
-void set_analog_format_framerate(double v);
+void set_analog_format_framerate(float v);
 void set_analog_format_colourspace(const char *s);
-void set_analog_format_color_matrix(int row, int col, double v);
-void set_clock_offset(double v);
+void set_analog_format_color_matrix(int row, int col, float v);
+void set_clock_offset(float v);
 void set_send_input(int send_idx, int v);
-void set_send_scaleX(int send_idx, double v);
-void set_send_scaleY(int send_idx, double v);
-void set_send_posX(int send_idx, double v);
-void set_send_posY(int send_idx, double v);
-void set_send_rotation(int send_idx, double v);
-void set_send_pitch(int send_idx, double v);
-void set_send_yaw(int send_idx, double v);
-void set_send_brightness(int send_idx, double v);
-void set_send_contrast(int send_idx, double v);
-void set_send_saturation(int send_idx, double v);
-void set_send_hue(int send_idx, double v);
-void set_send_lut_Y(int send_idx, double *v);
-void set_send_lut_R(int send_idx, double *v);
-void set_send_lut_G(int send_idx, double *v);
-void set_send_lut_B(int send_idx, double *v);
+void set_send_scaleX(int send_idx, float v);
+void set_send_scaleY(int send_idx, float v);
+void set_send_posX(int send_idx, float v);
+void set_send_posY(int send_idx, float v);
+void set_send_rotation(int send_idx, float v);
+void set_send_pitch(int send_idx, float v);
+void set_send_yaw(int send_idx, float v);
+void set_send_brightness(int send_idx, float v);
+void set_send_contrast(int send_idx, float v);
+void set_send_saturation(int send_idx, float v);
+void set_send_hue(int send_idx, float v);
+void set_send_lut_Y(int send_idx, float *v);
+void set_send_lut_R(int send_idx, float *v);
+void set_send_lut_G(int send_idx, float *v);
+void set_send_lut_B(int send_idx, float *v);
 void sync_all(char *buf, int len);
 
 #endif 

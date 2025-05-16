@@ -119,7 +119,7 @@ uint32_t get_analog_format_framerate(char *buf, int len) {
   snprintf(address, OSC_BUF_SIZE-1, "/analog_format/framerate");
   return tosc_writeMessage(buf, len, address, "f", config.analog_format.framerate);
 }
-void set_analog_format_framerate(double v) { config.analog_format.framerate = v; }
+void set_analog_format_framerate(float v) { config.analog_format.framerate = v; }
 /*
 ** analog_format_colourspace
 */
@@ -137,7 +137,7 @@ uint32_t get_analog_format_color_matrix(char *buf, int len, int row, int col) {
   snprintf(address, OSC_BUF_SIZE-1, "/analog_format/color_matrix/%d/%d", row, col);
   return tosc_writeMessage(buf, len, address, "f", config.analog_format.color_matrix[row][col]);
 }
-void set_analog_format_color_matrix(int row, int col, double v) { config.analog_format.color_matrix[row][col] = v; }
+void set_analog_format_color_matrix(int row, int col, float v) { config.analog_format.color_matrix[row][col] = v; }
 /*
 ** clock_offset
 */
@@ -146,7 +146,7 @@ uint32_t get_clock_offset(char *buf, int len) {
   snprintf(address, OSC_BUF_SIZE-1, "/clock_offset");
   return tosc_writeMessage(buf, len, address, "f", config.clock_offset);
 }
-void set_clock_offset(double v) { config.clock_offset = v; }
+void set_clock_offset(float v) { config.clock_offset = v; }
 /*
 ** send_input
 */
@@ -164,7 +164,7 @@ uint32_t get_send_scaleX(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/scaleX",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].scaleX);
 }
-void set_send_scaleX(int send_idx, double v) { config.send[send_idx].scaleX = v; }
+void set_send_scaleX(int send_idx, float v) { config.send[send_idx].scaleX = v; }
 /*
 ** send_scaleY
 */
@@ -173,7 +173,7 @@ uint32_t get_send_scaleY(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/scaleY",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].scaleY);
 }
-void set_send_scaleY(int send_idx, double v) { config.send[send_idx].scaleY = v; }
+void set_send_scaleY(int send_idx, float v) { config.send[send_idx].scaleY = v; }
 /*
 ** send_posX
 */
@@ -182,7 +182,7 @@ uint32_t get_send_posX(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/posX",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].posX);
 }
-void set_send_posX(int send_idx, double v) { config.send[send_idx].posX = v; }
+void set_send_posX(int send_idx, float v) { config.send[send_idx].posX = v; }
 /*
 ** send_posY
 */
@@ -191,7 +191,7 @@ uint32_t get_send_posY(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/posY",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].posY);
 }
-void set_send_posY(int send_idx, double v) { config.send[send_idx].posY = v; }
+void set_send_posY(int send_idx, float v) { config.send[send_idx].posY = v; }
 /*
 ** send_rotation
 */
@@ -200,7 +200,7 @@ uint32_t get_send_rotation(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/rotation",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].rotation);
 }
-void set_send_rotation(int send_idx, double v) { config.send[send_idx].rotation = v; }
+void set_send_rotation(int send_idx, float v) { config.send[send_idx].rotation = v; }
 /*
 ** send_pitch
 */
@@ -209,7 +209,7 @@ uint32_t get_send_pitch(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/pitch",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].pitch);
 }
-void set_send_pitch(int send_idx, double v) { config.send[send_idx].pitch = v; }
+void set_send_pitch(int send_idx, float v) { config.send[send_idx].pitch = v; }
 /*
 ** send_yaw
 */
@@ -218,7 +218,7 @@ uint32_t get_send_yaw(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/yaw",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].yaw);
 }
-void set_send_yaw(int send_idx, double v) { config.send[send_idx].yaw = v; }
+void set_send_yaw(int send_idx, float v) { config.send[send_idx].yaw = v; }
 /*
 ** send_brightness
 */
@@ -227,7 +227,7 @@ uint32_t get_send_brightness(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/brightness",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].brightness);
 }
-void set_send_brightness(int send_idx, double v) { config.send[send_idx].brightness = v; }
+void set_send_brightness(int send_idx, float v) { config.send[send_idx].brightness = v; }
 /*
 ** send_contrast
 */
@@ -236,7 +236,7 @@ uint32_t get_send_contrast(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/contrast",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].contrast);
 }
-void set_send_contrast(int send_idx, double v) { config.send[send_idx].contrast = v; }
+void set_send_contrast(int send_idx, float v) { config.send[send_idx].contrast = v; }
 /*
 ** send_saturation
 */
@@ -245,7 +245,7 @@ uint32_t get_send_saturation(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/saturation",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].saturation);
 }
-void set_send_saturation(int send_idx, double v) { config.send[send_idx].saturation = v; }
+void set_send_saturation(int send_idx, float v) { config.send[send_idx].saturation = v; }
 /*
 ** send_hue
 */
@@ -254,7 +254,7 @@ uint32_t get_send_hue(char *buf, int len, int send_idx) {
   snprintf(address, OSC_BUF_SIZE-1, "/send/%d/hue",send_idx);
   return tosc_writeMessage(buf, len, address, "f", config.send[send_idx].hue);
 }
-void set_send_hue(int send_idx, double v) { config.send[send_idx].hue = v; }
+void set_send_hue(int send_idx, float v) { config.send[send_idx].hue = v; }
 /*
 ** send_lut_Y
 */
@@ -296,7 +296,7 @@ uint32_t get_send_lut_Y(char *buf, int len, int send_idx) {
     config.send[send_idx].lut.Y[31]
   );
 }
-void set_send_lut_Y(int send_idx, double *v) { memcpy(config.send[send_idx].lut.Y, v, sizeof(double) * 32); }
+void set_send_lut_Y(int send_idx, float *v) { memcpy(config.send[send_idx].lut.Y, v, sizeof(float) * 32); }
 /*
 ** send_lut_R
 */
@@ -338,7 +338,7 @@ uint32_t get_send_lut_R(char *buf, int len, int send_idx) {
     config.send[send_idx].lut.R[31]
   );
 }
-void set_send_lut_R(int send_idx, double *v) { memcpy(config.send[send_idx].lut.R, v, sizeof(double) * 32); }
+void set_send_lut_R(int send_idx, float *v) { memcpy(config.send[send_idx].lut.R, v, sizeof(float) * 32); }
 /*
 ** send_lut_G
 */
@@ -380,7 +380,7 @@ uint32_t get_send_lut_G(char *buf, int len, int send_idx) {
     config.send[send_idx].lut.G[31]
   );
 }
-void set_send_lut_G(int send_idx, double *v) { memcpy(config.send[send_idx].lut.G, v, sizeof(double) * 32); }
+void set_send_lut_G(int send_idx, float *v) { memcpy(config.send[send_idx].lut.G, v, sizeof(float) * 32); }
 /*
 ** send_lut_B
 */
@@ -422,7 +422,7 @@ uint32_t get_send_lut_B(char *buf, int len, int send_idx) {
     config.send[send_idx].lut.B[31]
   );
 }
-void set_send_lut_B(int send_idx, double *v) { memcpy(config.send[send_idx].lut.B, v, sizeof(double) * 32); }
+void set_send_lut_B(int send_idx, float *v) { memcpy(config.send[send_idx].lut.B, v, sizeof(float) * 32); }
 // Generated sync_all routine
 void sync_all(char *buf, int len) {
   get_analog_format_resolution(buf,len);

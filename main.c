@@ -31,22 +31,24 @@ typedef struct connectionT {
 
 typedef int  (OscHandler)(tosc_message *, connectionT *);
 typedef uint32_t (GenericGetter)(char *, int);
-typedef void     (GenericSetterDouble)(double);
+typedef void     (GenericSetterDouble)(float);
 typedef void     (GenericSetterString)(const char *);
 typedef uint32_t (SendGetter)(char *, int, int);
-typedef void     (SendSetterDouble)(int, double);
+typedef void     (SendSetterDouble)(int, float);
 
-// 1) enum for argument dispatch
+
+// enum for argument dispatch
 
 typedef enum {
     OSC_ARG_NONE,       // raw handlers only
     OSC_ARG_INT,        // integer setter/getter
     OSC_ARG_FLOAT,      // generic float get/set
     OSC_ARG_STRING,     // generic string get/set
-    OSC_ARG_SEND_FLOAT  // send-indexed float get/set
+    OSC_ARG_SEND_FLOAT, // send-indexed float get/set
+    OSC_ARG_LUT         // LUTs
 } osc_argumentT;
 
-// 2) unified handler struct
+// unified handler struct
 
 typedef struct {
     char                 *address_match;
@@ -98,7 +100,7 @@ int generic_getter_wrapper(tosc_message *m, connectionT *c, GenericGetter *gette
     return c->send(c, OSC_BUFFER, len);
 }
 
-int generic_setter_double_wrapper(tosc_message *m, connectionT *c, GenericSetterDouble *setter) {
+int generic_setter_float_wrapper(tosc_message *m, connectionT *c, GenericSetterDouble *setter) {
     float v = tosc_getNextFloat(m);
     setter(v);
     return 0;
@@ -111,13 +113,32 @@ int generic_setter_string_wrapper(tosc_message *m, connectionT *c, GenericSetter
 }
 
 int message_to_send_number(tosc_message *m, connectionT *conn) {
+    // /send/x/...
+    //       ^
+    // 0123456
+
     int d = m->buffer[6] - '1';
     if ((d < 0) || (d > 3)) {
-        send_error_message(conn, "invalid send number");
+        send_error_message(conn, "Invalid send number");
         return -1;
     }
     return d;
 }
+
+char message_to_lut_channel(tosc_message *m, connectionT *conn) {
+    // /send/x/lut/c
+    //             ^ 
+    // 0123456789ABC
+
+    char c = m->buffer[0xC];
+    if ((c!='Y') || (c!='R') || (c!='G') || (c!='B')) {
+        send_error_message(conn, "Invalid LUT channel");
+        return (-1);
+    }
+    return (c);
+}
+
+
 
 int send_input_set_wrapper(tosc_message *m, connectionT *c) {
     int send_num = message_to_send_number(m, c);
@@ -140,7 +161,7 @@ int send_getter_wrapper(tosc_message *m, connectionT *c, SendGetter *getter) {
     return c->send(c, OSC_BUFFER, len);
 }
 
-int send_setter_double_wrapper(tosc_message *m, connectionT *c, SendSetterDouble *setter) {
+int send_setter_float_wrapper(tosc_message *m, connectionT *c, SendSetterDouble *setter) {
     int send_num = message_to_send_number(m, c);
     if (send_num < 0) return send_num;
 
@@ -148,6 +169,50 @@ int send_setter_double_wrapper(tosc_message *m, connectionT *c, SendSetterDouble
     setter(send_num, v);
     return 0;
 }
+
+int send_lut_get_wrapper(tosc_message *m, connectionT *c) {
+    int send_num = message_to_send_number(m, c);
+    if (send_num < 0) return send_num;
+
+    char channel = message_to_lut_channel(m, c);
+    if (channel < 0) return (-1);
+    
+    switch(channel) {
+        case 'Y': return(get_send_lut_Y(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
+        case 'R': return(get_send_lut_R(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
+        case 'G': return(get_send_lut_G(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
+        case 'B': return(get_send_lut_B(OSC_BUFFER, OSC_BUFFER_SIZE, send_num));
+    }
+
+    return(-1); 
+}
+
+int send_lut_set_wrapper(tosc_message *m, connectionT *c) {
+    float v[32];
+    int i;
+
+    int send_num = message_to_send_number(m, c);
+    if (send_num < 0) return send_num;
+
+    char channel = message_to_lut_channel(m, c);
+    if (channel < 0) return (-1);
+
+    // TODO: What if we only send <32 floats??
+    for (i=0; i<32; i++) {
+        v[i] = tosc_getNextFloat(m);
+    }
+    
+    switch(channel) {
+        case 'Y': set_send_lut_Y(send_num, v); break;
+        case 'R': set_send_lut_R(send_num, v); break;
+        case 'G': set_send_lut_G(send_num, v); break;
+        case 'B': set_send_lut_B(send_num, v); break;
+    }
+
+    return(0); 
+}
+
+
 
 // 3) handler table
 
@@ -161,6 +226,7 @@ osc_handlerT handlers[] = {
     { "/analog_format/colorspace",  "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
     { "/clock_offset",              "f",  NULL,                   NULL,                   OSC_ARG_FLOAT,   { .generic = { get_clock_offset, set_clock_offset } } },
 
+    { "/send/[1-4]/lut/[YRGB]",     "L",  send_lut_get_wrapper,   send_lut_set_wrapper,   OSC_ARG_LUT, { .generic = {NULL, NULL} } },
     { "/send/[1-4]/input",         "i",   NULL,                   send_input_set_wrapper, OSC_ARG_INT,     { .send    = { get_send_input, NULL } } },
 
     // send-indexed floats
@@ -210,8 +276,14 @@ void dispatch_message(tosc_message *osc, connectionT *conn) {
 
         // SET
         if (strcmp(h->format, osc->format) != 0) {
-            send_error_message(conn, "format mismatch");
-            return;
+            if (!(h->arg_type == OSC_ARG_LUT)) {
+                send_error_message(conn, "format mismatch");
+                return;
+            } else if (strcmp(osc->format, "ffffffffffffffffffffffffffffffff") != 0) {
+                send_error_message(conn, "LUTs require 32 float arguments: 16 (x,y) pairs");
+                send_error_message(conn, osc->format);
+                return;
+            }
         }
 
         if (h->raw_setter) {
@@ -221,13 +293,13 @@ void dispatch_message(tosc_message *osc, connectionT *conn) {
 
         switch (h->arg_type) {
             case OSC_ARG_FLOAT:
-                generic_setter_double_wrapper(osc, conn, h->handler.generic.set);
+                generic_setter_float_wrapper(osc, conn, h->handler.generic.set);
                 break;
             case OSC_ARG_STRING:
                 generic_setter_string_wrapper(osc, conn, h->handler.string.set);
                 break;
             case OSC_ARG_SEND_FLOAT:
-                send_setter_double_wrapper(osc, conn, h->handler.send.set);
+                send_setter_float_wrapper(osc, conn, h->handler.send.set);
                 break;
             default:
                 send_error_message(conn, "no setter");
