@@ -46,7 +46,7 @@ typedef enum {
     OSC_ARG_STRING,     // generic string get/set
     OSC_ARG_SEND_FLOAT, // send-indexed float get/set
     OSC_ARG_LUT         // LUTs
-} osc_argumentT;
+} osc_argumentE;
 
 // unified handler struct
 
@@ -57,7 +57,7 @@ typedef struct {
     OscHandler           *raw_getter;
     OscHandler           *raw_setter;
     // which argument form
-    osc_argumentT     arg_type;
+    osc_argumentE        arg_type;
     // union for generic vs send callbacks
     union {
         struct {
@@ -138,6 +138,26 @@ char message_to_lut_channel(tosc_message *m, connectionT *conn) {
     return (c);
 }
 
+int message_to_matrix_element(tosc_message *m, connectionT *conn, int *row, int *col) {
+    // /analog_format/color_matrix/r/c
+    // 0123456789ABCDEF0123456789ABCDE
+    //                             ^ ^
+
+    int r, c;
+
+    r = m->buffer[0x1C] - '1' - 1; // This isn't Numerical Recipies in C -- 0 indexed
+    c = m->buffer[0x1E] - '1' - 1;
+
+    if ((r < 0) || (r > 2) || (c < 0) || (c > 2)) {
+        send_error_message(conn, "Matrix index out of bounds");
+        return (-1);
+    } 
+
+    *row = r;
+    *col = c;
+
+    return (0);
+}
 
 
 int send_input_set_wrapper(tosc_message *m, connectionT *c) {
@@ -212,9 +232,32 @@ int send_lut_set_wrapper(tosc_message *m, connectionT *c) {
     return(0); 
 }
 
+int matrix_getter(tosc_message *m, connectionT *c) {
+    int row, col;
+    int idx = message_to_matrix_element(m, c, &row, &col);
+
+    if (idx < 0) return (-1);
+
+    return get_analog_format_color_matrix(OSC_BUFFER, OSC_BUFFER_SIZE, row, col);
+}
+
+int matrix_setter(tosc_message *m, connectionT *c) {
+    int row, col;
+    float v;
+    int idx = message_to_matrix_element(m, c, &row, &col);
+
+    v = tosc_getNextFloat(m);
+
+    if (idx < 0) return (-1);
+
+    set_analog_format_color_matrix(row, col, v);
+
+    return (0);
+}
 
 
-// 3) handler table
+
+// handler table
 
 osc_handlerT handlers[] = {
     // addr,                          fmt, raw_get,               raw_set,                arg,              handler
@@ -224,6 +267,7 @@ osc_handlerT handlers[] = {
     { "/analog_format/framerate",   "s",  NULL,                   NULL,                   OSC_ARG_FLOAT,   { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
     { "/analog_format/colourspace", "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
     { "/analog_format/colorspace",  "s",  NULL,                   NULL,                   OSC_ARG_STRING,    { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
+    { "/analog_format/color_matrix/[1-3]/[1-3]", "f", matrix_getter, matrix_setter,       OSC_ARG_FLOAT, { .generic = {NULL, NULL} }  },
     { "/clock_offset",              "f",  NULL,                   NULL,                   OSC_ARG_FLOAT,   { .generic = { get_clock_offset, set_clock_offset } } },
 
     { "/send/[1-4]/lut/[YRGB]",     "L",  send_lut_get_wrapper,   send_lut_set_wrapper,   OSC_ARG_LUT, { .generic = {NULL, NULL} } },
@@ -249,7 +293,7 @@ osc_handlerT handlers[] = {
     #undef SEND_ENTRY
 };
 
-// 4) dispatch
+// dispatch
 
 void dispatch_message(tosc_message *osc, connectionT *conn) {
     for (osc_handlerT *h = handlers; h->address_match; ++h) {
