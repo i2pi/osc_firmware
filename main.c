@@ -237,6 +237,22 @@ int matrix_setter(tosc_message *m, connectionT *c) {
 
 int sync_all(tosc_message *m, connectionT *c) {
     int len;
+
+    for (int input_idx=0; input_idx<4; input_idx++) {
+        len = get_input_connected(OSC_BUFFER, OSC_BUFFER_SIZE, input_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_input_resolution(OSC_BUFFER, OSC_BUFFER_SIZE, input_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_input_framerate(OSC_BUFFER, OSC_BUFFER_SIZE, input_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_input_colorspace(OSC_BUFFER, OSC_BUFFER_SIZE, input_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_input_bit_depth(OSC_BUFFER, OSC_BUFFER_SIZE, input_idx);
+        c->send(c, OSC_BUFFER, len);
+        len = get_input_chroma_subsampling(OSC_BUFFER, OSC_BUFFER_SIZE, input_idx);
+        c->send(c, OSC_BUFFER, len);
+    }
+
     len = get_clock_offset(OSC_BUFFER,OSC_BUFFER_SIZE);
     c->send(c, OSC_BUFFER, len);
     len = get_sync_mode(OSC_BUFFER,OSC_BUFFER_SIZE);

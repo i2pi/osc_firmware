@@ -6,6 +6,40 @@
 
 Config config =
 {
+   .input = {
+        {
+            .connected = 0,
+            .resolution = "",
+            .framerate = 24.0,
+            .colorspace = "YUV",
+            .bit_depth = 0,
+            .chroma_subsampling = "4:4:4"
+        },
+        {
+            .connected = 0,
+            .resolution = "",
+            .framerate = 24.0,
+            .colorspace = "YUV",
+            .bit_depth = 0,
+            .chroma_subsampling = "4:4:4"
+        },
+        {
+            .connected = 0,
+            .resolution = "",
+            .framerate = 24.0,
+            .colorspace = "YUV",
+            .bit_depth = 0,
+            .chroma_subsampling = "4:4:4"
+        },
+        {
+            .connected = 0,
+            .resolution = "",
+            .framerate = 24.0,
+            .colorspace = "YUV",
+            .bit_depth = 0,
+            .chroma_subsampling = "4:4:4"
+        }
+  },
   .analog_format = {
     .resolution = "1920x1080",
     .framerate = 60.0,
@@ -103,6 +137,46 @@ Config config =
 };
 
 // Generated OSC getters/setters
+/*
+** inputs
+*/
+
+uint32_t get_input_connected(char *buf, int len, int input_idx) {
+    char address[OSC_BUF_SIZE];
+    snprintf(address, OSC_BUF_SIZE - 1, "/input/%d/connected", input_idx + 1);
+    return tosc_writeMessage( buf, len, address, config.input[input_idx].connected ? "T" : "F", NULL);
+}
+
+uint32_t get_input_resolution(char *buf, int len, int input_idx) {
+    char address[OSC_BUF_SIZE];
+    snprintf(address, OSC_BUF_SIZE - 1, "/input/%d/resolution", input_idx + 1);
+    return tosc_writeMessage( buf, len, address, "s", config.input[input_idx].resolution);
+}
+
+uint32_t get_input_framerate(char *buf, int len, int input_idx) {
+    char address[OSC_BUF_SIZE];
+    snprintf(address, OSC_BUF_SIZE - 1, "/input/%d/framerate", input_idx + 1);
+    return tosc_writeMessage( buf, len, address, "f", config.input[input_idx].framerate);
+}
+
+uint32_t get_input_colorspace(char *buf, int len, int input_idx) {
+    char address[OSC_BUF_SIZE];
+    snprintf(address, OSC_BUF_SIZE - 1, "/input/%d/colorspace", input_idx + 1);
+    return tosc_writeMessage( buf, len, address, "s", config.input[input_idx].colorspace);
+}
+
+uint32_t get_input_bit_depth(char *buf, int len, int input_idx) {
+    char address[OSC_BUF_SIZE];
+    snprintf(address, OSC_BUF_SIZE - 1, "/input/%d/bit_depth", input_idx + 1);
+    return tosc_writeMessage( buf, len, address, "i", config.input[input_idx].bit_depth);
+}
+
+uint32_t get_input_chroma_subsampling(char *buf, int len, int input_idx) {
+    char address[OSC_BUF_SIZE];
+    snprintf(address, OSC_BUF_SIZE - 1, "/input/%d/chroma_subsampling", input_idx + 1);
+    return tosc_writeMessage( buf, len, address, "s", config.input[input_idx].chroma_subsampling);
+}
+
 /*
 ** analog_format_resolution
 */

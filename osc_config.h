@@ -39,13 +39,29 @@ typedef struct ConfigSend {
   ConfigSendLut lut;
 } ConfigSend;
 
+typedef struct ConfigInput {
+    char connected;
+    char resolution[CONFIG_MAX_STR_LEN];
+    float framerate;
+    char colorspace[CONFIG_MAX_STR_LEN];
+    char bit_depth;
+    char chroma_subsampling[CONFIG_MAX_STR_LEN];
+} ConfigInput;
+
 typedef struct Config {
   ConfigAnalogFormat analog_format;
   int clock_offset;
   char sync_mode[CONFIG_MAX_STR_LEN];
+  ConfigInput input[4];
   ConfigSend send[4];
 } Config;
 
+uint32_t get_input_connected(char *buf, int len, int input_idx);
+uint32_t get_input_resolution(char *buf, int len, int input_idx);
+uint32_t get_input_framerate(char *buf, int len, int input_idx);
+uint32_t get_input_colorspace(char *buf, int len, int input_idx);
+uint32_t get_input_bit_depth(char *buf, int len, int input_idx);
+uint32_t get_input_chroma_subsampling(char *buf, int len, int input_idx);
 uint32_t get_analog_format_resolution(char *buf, int len);
 uint32_t get_analog_format_framerate(char *buf, int len);
 uint32_t get_analog_format_colourspace(char *buf, int len);
