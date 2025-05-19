@@ -114,7 +114,11 @@ int generic_setter_string_wrapper(tosc_message *m, connectionT *c, GenericSetter
 }
 
 int message_to_send_number(tosc_message *m, connectionT *conn) {
-    int d = m->buffer[6] - '1';
+    // /send/n
+    // 0123456
+    //       ^
+
+    int d = m->buffer[6] - '1'; // NRinC numbering
     if ((d < 0) || (d > 3)) {
         send_error_message(conn, "Invalid send number");
         return -1;
@@ -123,6 +127,10 @@ int message_to_send_number(tosc_message *m, connectionT *conn) {
 }
 
 char message_to_lut_channel(tosc_message *m, connectionT *conn) {
+    // /send/n/lut/C
+    // 0123456789ABC
+    //             ^
+
     char c = m->buffer[0xC];
     if (c!='Y' && c!='R' && c!='G' && c!='B') {
         send_error_message(conn, "Invalid LUT channel");
@@ -132,6 +140,10 @@ char message_to_lut_channel(tosc_message *m, connectionT *conn) {
 }
 
 int message_to_matrix_element(tosc_message *m, connectionT *conn, int *row, int *col) {
+    // /analog_format/color_matrix/R/C
+    // 0123456789ABCDEF0123456789ABCDE
+    //                             ^ ^
+    
     int r = m->buffer[0x1C] - '0';
     int c = m->buffer[0x1E] - '0';
     if ((r < 0) || (r > 2) || (c < 0) || (c > 2)) {
@@ -287,7 +299,7 @@ osc_handlerT handlers[] = {
     { "/analog_format/framerate",   "s", NULL, NULL, OSC_ARG_FLOAT,  { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
     { "/analog_format/colourspace","s", NULL, NULL, OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
     { "/analog_format/colorspace",  "s", NULL, NULL, OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
-    { "/analog_format/color_matrix/[0-2]_[0-2]", "f", matrix_getter, matrix_setter, OSC_ARG_FLOAT, { .generic = { NULL, NULL } } },
+    { "/analog_format/color_matrix/[0-2]/[0-2]", "f", matrix_getter, matrix_setter, OSC_ARG_FLOAT, { .generic = { NULL, NULL } } },
     { "/clock_offset",              "f",  NULL,                   NULL,                   OSC_ARG_INT ,   { .integer = { get_clock_offset, set_clock_offset } } },
 
     { "/send/[1-4]/lut/[YRGB]",     "L",  send_lut_get_wrapper,   send_lut_set_wrapper,   OSC_ARG_LUT,    { .generic = { NULL, NULL } } },
