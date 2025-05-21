@@ -466,8 +466,10 @@ DEFINE_SEND_FLOAT(handle_send_hue, hue)
           config.send[idx].lut.channel[30], config.send[idx].lut.channel[31]); \
     } else {                                                                   \
       float v[32];                                                             \
-      for (int i = 0; i < 32; i++)                                             \
+      for (int i = 0; i < 32; i++) {                                             \
         v[i] = tosc_getNextFloat(msg);                                         \
+//        printf ("***** LUT %d channel %02d = %6.4f\n", idx, i, v[i]); \
+      }                                                                         \
       memcpy(config.send[idx].lut.channel, v, 32 * sizeof(float));             \
     }                                                                          \
     return 0;                                                                  \
@@ -509,10 +511,10 @@ static dispatch_entry dispatch_table[] = {
     {"/send/[1-4]/contrast", "f", handle_send_contrast},
     {"/send/[1-4]/saturation", "f", handle_send_saturation},
     {"/send/[1-4]/hue", "f", handle_send_hue},
-    {"/send/[1-4]/lut/Y", "*", handle_send_lut_Y},
-    {"/send/[1-4]/lut/R", "*", handle_send_lut_R},
-    {"/send/[1-4]/lut/G", "*", handle_send_lut_G},
-    {"/send/[1-4]/lut/B", "*", handle_send_lut_B},
+    {"/send/[1-4]/lut/Y", "ffffffffffffffffffffffffffffffff", handle_send_lut_Y},
+    {"/send/[1-4]/lut/R", "ffffffffffffffffffffffffffffffff", handle_send_lut_R},
+    {"/send/[1-4]/lut/G", "ffffffffffffffffffffffffffffffff", handle_send_lut_G},
+    {"/send/[1-4]/lut/B", "ffffffffffffffffffffffffffffffff", handle_send_lut_B},
     {NULL, NULL, NULL}};
 
 // Central dispatch
