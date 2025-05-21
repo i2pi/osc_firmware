@@ -42,12 +42,12 @@ typedef struct ConfigSend {
 } ConfigSend;
 
 typedef struct ConfigInput {
-    char connected;
-    char resolution[CONFIG_MAX_STR_LEN];
-    float framerate;
-    char colorspace[CONFIG_MAX_STR_LEN];
-    char bit_depth;
-    char chroma_subsampling[CONFIG_MAX_STR_LEN];
+  char connected;
+  char resolution[CONFIG_MAX_STR_LEN];
+  float framerate;
+  char colorspace[CONFIG_MAX_STR_LEN];
+  char bit_depth;
+  char chroma_subsampling[CONFIG_MAX_STR_LEN];
 } ConfigInput;
 
 typedef struct Config {
@@ -63,15 +63,11 @@ typedef int (*OscHandler)(tosc_message *msg, connectionT *conn);
 
 // Dispatch table entry
 typedef struct dispatch_entry {
-    const char *path_pattern;
-    const char *type_sig;
-    OscHandler handler;
+  const char *path_pattern;
+  const char *type_sig;
+  OscHandler handler;
 } dispatch_entry;
-
-
 
 void dispatch_message(tosc_message *osc, connectionT *conn);
 
 #endif
-
-
