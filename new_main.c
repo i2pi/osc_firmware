@@ -181,6 +181,7 @@ typedef int (*OscHandler)(tosc_message *msg, connectionT *conn);
 
 // Error reply
 static void send_error_message(connectionT *conn, const char *text) {
+    printf ("ERROR: %s\n", text);
     send_osc(conn, "/error", "s", text);
 }
 
@@ -196,9 +197,10 @@ static int parse_input_index(tosc_message *msg, connectionT *conn) {
     // 01234567
     //        ^
 
-    int d = msg->buffer[7] - '0'; 
+    int d = msg->buffer[7] - '1'; 
     if ((d < 0) || (d > 3)) {
         send_error_message(conn, "Invalid input number");
+        tosc_printMessage(msg);
         return -1;
     }
     return d;
@@ -212,9 +214,10 @@ static int parse_send_index(tosc_message *msg, connectionT *conn) {
     // 0123456
     //       ^
 
-    int d = msg->buffer[6] - '0'; 
+    int d = msg->buffer[6] - '1'; 
     if ((d < 0) || (d > 3)) {
         send_error_message(conn, "Invalid send number");
+        tosc_printMessage(msg);
         return -1;
     }
     return d;
@@ -232,6 +235,7 @@ static int parse_matrix_coords(tosc_message *msg, connectionT *conn, int *row, i
     int c = msg->buffer[0x1E] - '0';
     if ((r < 0) || (r > 2) || (c < 0) || (c > 2)) {
         send_error_message(conn, "Matrix index out of bounds");
+        tosc_printMessage(msg);
         return -1;
     } 
     *row = r;
@@ -418,22 +422,47 @@ DEFINE_SEND_LUT(handle_send_lut_B,B)
 static int sync_all(tosc_message *msg, connectionT *conn);
 
 // Dispatch table
-static struct{const char*path_pattern;const char*type_sig;OscHandler handler;}dispatch_table[]={
-    {"/ack","",handle_ack},{"/sync","",sync_all},{"/sync_mode","s",handle_sync_mode},
-    {"/input/[1-4]/connected","T",handle_input_connected},{"/input/[1-4]/resolution","s",handle_input_resolution},
-    {"/input/[1-4]/framerate","f",handle_input_framerate},{"/input/[1-4]/colorspace","s",handle_input_colorspace},
-    {"/input/[1-4]/bit_depth","i",handle_input_bit_depth},{"/input/[1-4]/chroma_subsampling","s",handle_input_chroma_subsampling},
-    {"/clock_offset","i",handle_clock_offset},{"/analog_format/resolution","s",handle_analog_resolution},
-    {"/analog_format/framerate","f",handle_analog_framerate},{"/analog_format/colourspace","s",handle_analog_colourspace},
-    {"/analog_format/color_matrix/[0-2]/[0-2]","f",handle_analog_color_matrix},{"/send/[1-4]/input","i",handle_send_input},
-    {"/send/[1-4]/scaleX","f",handle_send_scaleX},{"/send/[1-4]/scaleY","f",handle_send_scaleY},
-    {"/send/[1-4]/posX","f",handle_send_posX},{"/send/[1-4]/posY","f",handle_send_posY},
-    {"/send/[1-4]/rotation","f",handle_send_rotation},{"/send/[1-4]/pitch","f",handle_send_pitch},
-    {"/send/[1-4]/yaw","f",handle_send_yaw},{"/send/[1-4]/brightness","f",handle_send_brightness},
-    {"/send/[1-4]/contrast","f",handle_send_contrast},{"/send/[1-4]/saturation","f",handle_send_saturation},
-    {"/send/[1-4]/hue","f",handle_send_hue},{"/send/[1-4]/lut/Y","*",handle_send_lut_Y},
-    {"/send/[1-4]/lut/R","*",handle_send_lut_R},{"/send/[1-4]/lut/G","*",handle_send_lut_G},
-    {"/send/[1-4]/lut/B","*",handle_send_lut_B},{NULL,NULL,NULL}};
+// Dispatch table entry
+typedef struct dispatch_entry {
+    const char *path_pattern;
+    const char *type_sig;
+    OscHandler handler;
+} dispatch_entry;
+
+// Dispatch table
+static dispatch_entry dispatch_table[] = {
+    { "/ack",                           "",  handle_ack                   },
+    { "/sync",                          "",  sync_all                    },
+    { "/sync_mode",                     "s", handle_sync_mode             },
+    { "/input/[1-4]/connected",         "T", handle_input_connected      },
+    { "/input/[1-4]/resolution",        "s", handle_input_resolution     },
+    { "/input/[1-4]/framerate",         "f", handle_input_framerate      },
+    { "/input/[1-4]/colorspace",        "s", handle_input_colorspace     },
+    { "/input/[1-4]/bit_depth",         "i", handle_input_bit_depth      },
+    { "/input/[1-4]/chroma_subsampling", "s", handle_input_chroma_subsampling },
+    { "/clock_offset",                  "i", handle_clock_offset          },
+    { "/analog_format/resolution",      "s", handle_analog_resolution    },
+    { "/analog_format/framerate",       "f", handle_analog_framerate     },
+    { "/analog_format/colourspace",     "s", handle_analog_colourspace   },
+    { "/analog_format/color_matrix/[0-2]/[0-2]", "f", handle_analog_color_matrix },
+    { "/send/[1-4]/input",              "i", handle_send_input           },
+    { "/send/[1-4]/scaleX",             "f", handle_send_scaleX          },
+    { "/send/[1-4]/scaleY",             "f", handle_send_scaleY          },
+    { "/send/[1-4]/posX",               "f", handle_send_posX            },
+    { "/send/[1-4]/posY",               "f", handle_send_posY            },
+    { "/send/[1-4]/rotation",           "f", handle_send_rotation        },
+    { "/send/[1-4]/pitch",              "f", handle_send_pitch           },
+    { "/send/[1-4]/yaw",                "f", handle_send_yaw             },
+    { "/send/[1-4]/brightness",         "f", handle_send_brightness      },
+    { "/send/[1-4]/contrast",           "f", handle_send_contrast        },
+    { "/send/[1-4]/saturation",         "f", handle_send_saturation      },
+    { "/send/[1-4]/hue",                "f", handle_send_hue             },
+    { "/send/[1-4]/lut/Y",              "*", handle_send_lut_Y           },
+    { "/send/[1-4]/lut/R",              "*", handle_send_lut_R           },
+    { "/send/[1-4]/lut/G",              "*", handle_send_lut_G           },
+    { "/send/[1-4]/lut/B",              "*", handle_send_lut_B           },
+    { NULL,                              NULL, NULL                        }
+};
 
 // Central dispatch
 void dispatch_message(tosc_message *osc, connectionT *conn) {
@@ -448,15 +477,87 @@ void dispatch_message(tosc_message *osc, connectionT *conn) {
 
 // sync_all: broadcast via existing handlers
 static int sync_all(tosc_message *msg, connectionT *conn) {
+    char local_path[128];
+    tosc_message dummy;
 
-    tosc_message *dummy = msg;
+    for (dispatch_entry *e = dispatch_table; e->path_pattern; ++e) {
+        const char *pat = e->path_pattern;
 
-    for(int i=0;dispatch_table[i].path_pattern;++i){
-        const char*path=dispatch_table[i].path_pattern;
-        if(strcmp(path,"/sync")==0||strcmp(path,"/ack")==0)continue;
-        dispatch_table[i].handler(dummy,conn);
+        // skip sync and ack themselves
+        if (strcmp(pat, "/sync") == 0 || strcmp(pat, "/ack") == 0)
+            continue;
+
+        // Expand wildcards for /input/[1-4]/...
+        if (strncmp(pat, "/input/[1-4]/", 12) == 0) {
+            for (int n = 1; n <= 4; ++n) {
+                snprintf(local_path, sizeof(local_path),
+                         "/input/%d%s", n, pat + 12);
+                dummy.buffer = local_path;
+                size_t len = strlen(local_path);
+                dummy.format = dummy.buffer + len;
+                *dummy.format = '\0';
+                dummy.marker = dummy.format;
+                e->handler(&dummy, conn);
+            }
+        }
+        // Expand wildcards for /send/[1-4]/... (non-LUT)
+        else if (strncmp(pat, "/send/[1-4]/", 12) == 0 && strstr(pat, "/lut/") == NULL) {
+            for (int n = 1; n <= 4; ++n) {
+                snprintf(local_path, sizeof(local_path),
+                         "/send/%d%s", n, pat + 11);
+                dummy.buffer = local_path;
+                size_t len = strlen(local_path);
+                dummy.format = dummy.buffer + len;
+                *dummy.format = '\0';
+                dummy.marker = dummy.format;
+                e->handler(&dummy, conn);
+            }
+        }
+        // Expand LUT channels
+        else if (strncmp(pat, "/send/[1-4]/lut/", 15) == 0) {
+            const char *channels = "YRGB";
+            for (int n = 1; n <= 4; ++n) {
+                for (const char *ch = channels; *ch; ++ch) {
+                    snprintf(local_path, sizeof(local_path),
+                             "/send/%d/lut/%c", n, *ch);
+                    dummy.buffer = local_path;
+                    size_t len = strlen(local_path);
+                    dummy.format = dummy.buffer + len;
+                    *dummy.format = '\0';
+                    dummy.marker = dummy.format;
+                    e->handler(&dummy, conn);
+                }
+            }
+        }
+        // Expand matrix elements
+        else if (strcmp(pat, "/analog_format/color_matrix/[0-2]/[0-2]") == 0) {
+            for (int r = 0; r < 3; ++r) {
+                for (int c = 0; c < 3; ++c) {
+                    snprintf(local_path, sizeof(local_path),
+                             "/analog_format/color_matrix/%d/%d", r, c);
+                    dummy.buffer = local_path;
+                    size_t len = strlen(local_path);
+                    dummy.format = dummy.buffer + len;
+                    *dummy.format = '\0';
+                    dummy.marker = dummy.format;
+                    e->handler(&dummy, conn);
+                }
+            }
+        }
+        // No wildcard: direct call
+        else {
+            snprintf(local_path, sizeof(local_path), "%s", pat);
+            dummy.buffer = local_path;
+            size_t len = strlen(local_path);
+            dummy.format = dummy.buffer + len;
+            *dummy.format = '\0';
+            dummy.marker = dummy.format;
+            e->handler(&dummy, conn);
+        }
     }
-    handle_ack(dummy, conn);
+
+    // final ack
+    handle_ack(msg, conn);
     return 0;
 }
 
@@ -474,6 +575,18 @@ size_t send_wrapper(connectionT *conn, const void *buf, size_t len) {
         (struct sockaddr *)&conn->con.addr,
         conn->con.addr_len
     );
+
+    printf ("SENDING: ");
+
+    for (int i=0; i<len; i++) {
+        char c=((char *)buf)[i];
+        if (isprint(c)) {
+            printf("%c", c);
+        } else {
+            printf("(%02X)", c);
+        }
+    }
+    printf ("\n");      
 
     if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
         fd_set wfds;
