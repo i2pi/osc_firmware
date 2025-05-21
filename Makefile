@@ -1,6 +1,5 @@
 CC = gcc
-#SRC = main.c tinyosc.c globmatch.c osc_config.c
-SRC = new_main.c tinyosc.c globmatch.c 
+SRC = main.c tinyosc.c globmatch.c osc_handlers.c
 INC = tinyosc.h osc_config.h
 BIN = osc_firmware
 
