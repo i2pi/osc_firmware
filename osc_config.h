@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "tinyosc.h"
 #include "network.h"
 
 #define CONFIG_MAX_STR_LEN 16
