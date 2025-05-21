@@ -468,7 +468,6 @@ DEFINE_SEND_FLOAT(handle_send_hue, hue)
       float v[32];                                                             \
       for (int i = 0; i < 32; i++) {                                             \
         v[i] = tosc_getNextFloat(msg);                                         \
-//        printf ("***** LUT %d channel %02d = %6.4f\n", idx, i, v[i]); \
       }                                                                         \
       memcpy(config.send[idx].lut.channel, v, 32 * sizeof(float));             \
     }                                                                          \
