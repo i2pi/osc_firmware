@@ -310,7 +310,7 @@ static int handle_input_connected(tosc_message *msg, connectionT *conn) {
 
     // GET (no format): reply with OSC boolean 'T' or 'F'
     if (msg->format[0] == '\0') {
-        send_osc(conn, addr, "T", NULL);
+        send_osc(conn, addr, config.input[idx].connected ? "T" : "F", NULL);
     }
     // SET: expect format 'T' or 'F'
     else if (msg->format[0] == 'T' || msg->format[0] == 'F') {
