@@ -8,8 +8,24 @@ Config config =
 {
    .input = {
         {
+            .connected = 1,
+            .resolution = "1920x1080",
+            .framerate = 24.0,
+            .colorspace = "YUV",
+            .bit_depth = 8,
+            .chroma_subsampling = "4:4:4"
+        },
+        {
+            .connected = 1,
+            .resolution = "3840x2160",
+            .framerate = 29.97,
+            .colorspace = "YUV",
+            .bit_depth = 10,
+            .chroma_subsampling = "4:2:0"
+        },
+        {
             .connected = 0,
-            .resolution = "",
+            .resolution = "1x1",
             .framerate = 24.0,
             .colorspace = "YUV",
             .bit_depth = 0,
@@ -17,23 +33,7 @@ Config config =
         },
         {
             .connected = 0,
-            .resolution = "",
-            .framerate = 24.0,
-            .colorspace = "YUV",
-            .bit_depth = 0,
-            .chroma_subsampling = "4:4:4"
-        },
-        {
-            .connected = 0,
-            .resolution = "",
-            .framerate = 24.0,
-            .colorspace = "YUV",
-            .bit_depth = 0,
-            .chroma_subsampling = "4:4:4"
-        },
-        {
-            .connected = 0,
-            .resolution = "",
+            .resolution = "1x1",
             .framerate = 24.0,
             .colorspace = "YUV",
             .bit_depth = 0,

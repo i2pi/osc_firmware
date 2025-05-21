@@ -159,8 +159,8 @@ int send_input_set_wrapper(tosc_message *m, connectionT *c) {
     int send_num = message_to_send_number(m, c);
     if (send_num < 0) return send_num;
 
-    int input_num = tosc_getNextInt32(m) - 1;
-    if ((input_num < 0) || (input_num > 3)) {
+    int input_num = tosc_getNextInt32(m);
+    if ((input_num < 1) || (input_num > 4)) {
         send_error_message(c, "Invalid input number [1..4]");
         return -1;
     }
@@ -312,7 +312,7 @@ osc_handlerT handlers[] = {
     { "/sync", "",  sync_all,                NULL,                   OSC_ARG_NONE,   { .generic = { NULL, NULL } } },
     { "/sync_mode", "s", NULL,                NULL,                   OSC_ARG_STRING, { .string  = { get_sync_mode, set_sync_mode } } },
     { "/analog_format/resolution",  "s", NULL, NULL, OSC_ARG_STRING, { .string = { get_analog_format_resolution, set_analog_format_resolution } } },
-    { "/analog_format/framerate",   "s", NULL, NULL, OSC_ARG_FLOAT,  { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
+    { "/analog_format/framerate",   "f", NULL, NULL, OSC_ARG_FLOAT,  { .generic = { get_analog_format_framerate, set_analog_format_framerate } } },
     { "/analog_format/colourspace","s", NULL, NULL, OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
     { "/analog_format/colorspace",  "s", NULL, NULL, OSC_ARG_STRING, { .string = { get_analog_format_colourspace, set_analog_format_colourspace } } },
     { "/analog_format/color_matrix/[0-2]/[0-2]", "f", matrix_getter, matrix_setter, OSC_ARG_FLOAT, { .generic = { NULL, NULL } } },
@@ -365,7 +365,9 @@ void dispatch_message(tosc_message *osc, connectionT *conn) {
         if (strcmp(h->format, osc->format) != 0) {
             if (h->arg_type != OSC_ARG_LUT ||
                 strcmp(osc->format, "ffffffffffffffffffffffffffffffff") != 0) {
-                send_error_message(conn, "format mismatch");
+                char err_buff[1024];
+                snprintf (err_buff, 1023, "format mismatch: expected '%s' got '%s'\n", h->format, osc->format);
+                send_error_message(conn, err_buff);
                 return;
             }
         }
@@ -490,6 +492,7 @@ int main(int argc, char *argv[]) {
                 } else {
                     tosc_message osc;
                     tosc_parseMessage(&osc, buffer, len);
+                    tosc_printOscBuffer(buffer, len);
                     dispatch_message(&osc, &conn);
                 }
             }
