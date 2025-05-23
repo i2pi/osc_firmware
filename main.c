@@ -20,7 +20,7 @@ size_t send_wrapper(connectionT *conn, const void *buf, size_t len) {
   ssize_t sent = sendto(conn->con.fd, buf, len, 0,
                         (struct sockaddr *)&conn->con.addr, conn->con.addr_len);
 
-  printf("SENDING: ");
+/*  printf("SENDING: ");
 
   for (int i = 0; i < len; i++) {
     char c = ((char *)buf)[i];
@@ -31,6 +31,7 @@ size_t send_wrapper(connectionT *conn, const void *buf, size_t len) {
     }
   }
   printf("\n");
+*/
 
   if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
     fd_set wfds;

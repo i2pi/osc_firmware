@@ -14,151 +14,7 @@
 #include "osc_config.h"
 #include "tinyosc.h"
 
-Config config = {
-    .input = {{.connected = 1,
-               .resolution = "1920x1080",
-               .framerate = 24.0,
-               .colorspace = "YUV",
-               .bit_depth = 8,
-               .chroma_subsampling = "4:4:4"},
-              {.connected = 1,
-               .resolution = "3840x2160",
-               .framerate = 29.97,
-               .colorspace = "YUV",
-               .bit_depth = 10,
-               .chroma_subsampling = "4:2:0"},
-              {.connected = 0,
-               .resolution = "1x1",
-               .framerate = 24.0,
-               .colorspace = "YUV",
-               .bit_depth = 0,
-               .chroma_subsampling = "4:4:4"},
-              {.connected = 0,
-               .resolution = "1x1",
-               .framerate = 24.0,
-               .colorspace = "YUV",
-               .bit_depth = 0,
-               .chroma_subsampling = "4:4:4"}},
-    .analog_format = {.resolution = "1920x1080",
-                      .framerate = 60.0,
-                      .colourspace = "RGB",
-                      .color_matrix = {{1.0, 0.0, 0.0},
-                                       {0.0, 1.0, 0.0},
-                                       {0.0, 0.0, 1.0}}},
-    .clock_offset = 0,
-    .sync_mode = "locked",
-    .send = {{.input = 1,
-              .scaleX = 1.0,
-              .scaleY = 1.0,
-              .posX = 0.0,
-              .posY = 0.0,
-              .rotation = 0.0,
-              .pitch = 0.0,
-              .yaw = 0.0,
-              .brightness = 0.5,
-              .contrast = 0.5,
-              .saturation = 0.5,
-              .hue = 0.0,
-              .lut = {.Y = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .R = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .G = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .B = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0}}},
-             {.input = 2,
-              .scaleX = 1.0,
-              .scaleY = 1.0,
-              .posX = 0.0,
-              .posY = 0.0,
-              .rotation = 0.0,
-              .pitch = 0.0,
-              .yaw = 0.0,
-              .brightness = 0.5,
-              .contrast = 0.5,
-              .saturation = 0.5,
-              .hue = 0.0,
-              .lut = {.Y = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .R = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .G = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .B = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0}}},
-             {.input = 2,
-              .scaleX = 1.0,
-              .scaleY = 1.0,
-              .posX = 0.0,
-              .posY = 0.0,
-              .rotation = 0.0,
-              .pitch = 0.0,
-              .yaw = 0.0,
-              .brightness = 0.5,
-              .contrast = 0.5,
-              .saturation = 0.5,
-              .hue = 0.0,
-              .lut = {.Y = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .R = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .G = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .B = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0}}},
-             {.input = 3,
-              .scaleX = 1.0,
-              .scaleY = 1.0,
-              .posX = 0.0,
-              .posY = 0.0,
-              .rotation = 0.0,
-              .pitch = 0.0,
-              .yaw = 0.0,
-              .brightness = 0.5,
-              .contrast = 0.5,
-              .saturation = 0.5,
-              .hue = 0.0,
-              .lut = {.Y = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .R = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .G = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0},
-                      .B = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
-                            -1.0, -1.0, -1.0, -1.0, 0.0,  0.0,  1.0,  1.0}}}}};
+#include "osc_config_defaults.c"
 
 /**
 *** MESSAGE HANDLING
@@ -438,46 +294,63 @@ DEFINE_SEND_FLOAT(handle_send_contrast, contrast)
 DEFINE_SEND_FLOAT(handle_send_saturation, saturation)
 DEFINE_SEND_FLOAT(handle_send_hue, hue)
 
-// send_lut channels
-#define DEFINE_SEND_LUT(name, channel)                                         \
-  static int name(tosc_message *msg, connectionT *conn) {                      \
-    int idx = parse_send_index(msg, conn);                                     \
-    if (idx < 0)                                                               \
-      return 0;                                                                \
-    const char *path = tosc_getAddress(msg);                                   \
-    if (msg->format[0] == '\0') {                                              \
-      send_osc(                                                                \
-          conn, path, "ffffffffffffffffffffffffffffffff",                      \
-          config.send[idx].lut.channel[0], config.send[idx].lut.channel[1],    \
-          config.send[idx].lut.channel[2], config.send[idx].lut.channel[3],    \
-          config.send[idx].lut.channel[4], config.send[idx].lut.channel[5],    \
-          config.send[idx].lut.channel[6], config.send[idx].lut.channel[7],    \
-          config.send[idx].lut.channel[8], config.send[idx].lut.channel[9],    \
-          config.send[idx].lut.channel[10], config.send[idx].lut.channel[11],  \
-          config.send[idx].lut.channel[12], config.send[idx].lut.channel[13],  \
-          config.send[idx].lut.channel[14], config.send[idx].lut.channel[15],  \
-          config.send[idx].lut.channel[16], config.send[idx].lut.channel[17],  \
-          config.send[idx].lut.channel[18], config.send[idx].lut.channel[19],  \
-          config.send[idx].lut.channel[20], config.send[idx].lut.channel[21],  \
-          config.send[idx].lut.channel[22], config.send[idx].lut.channel[23],  \
-          config.send[idx].lut.channel[24], config.send[idx].lut.channel[25],  \
-          config.send[idx].lut.channel[26], config.send[idx].lut.channel[27],  \
-          config.send[idx].lut.channel[28], config.send[idx].lut.channel[29],  \
-          config.send[idx].lut.channel[30], config.send[idx].lut.channel[31]); \
-    } else {                                                                   \
-      float v[32];                                                             \
-      for (int i = 0; i < 32; i++) {                                             \
-        v[i] = tosc_getNextFloat(msg);                                         \
-      }                                                                         \
-      memcpy(config.send[idx].lut.channel, v, 32 * sizeof(float));             \
-    }                                                                          \
-    return 0;                                                                  \
-  }
+static int handle_send_lut(tosc_message *msg, connectionT *conn) {
+    int idx = parse_send_index(msg, conn);
+    if (idx < 0) return 0;
 
-DEFINE_SEND_LUT(handle_send_lut_Y, Y)
-DEFINE_SEND_LUT(handle_send_lut_R, R)
-DEFINE_SEND_LUT(handle_send_lut_G, G)
-DEFINE_SEND_LUT(handle_send_lut_B, B)
+    char ch = message_to_lut_channel(msg, conn);
+    if (ch < 0) return 0;
+
+    LutChannel lc;
+    switch (ch) {
+      case 'Y': lc = LUT_CHANNEL_Y; break;
+      case 'R': lc = LUT_CHANNEL_R; break;
+      case 'G': lc = LUT_CHANNEL_G; break;
+      case 'B': lc = LUT_CHANNEL_B; break;
+      default:
+        send_error_message(conn, "Invalid LUT channel");
+        return 0;
+    }
+
+    const char *path = tosc_getAddress(msg);
+    // format string of 32 'f's
+    char fmt[33];
+    for (int i = 0; i < 32; i++) fmt[i] = 'f';
+    fmt[32] = '\0';
+
+    if (msg->format[0] == '\0') {
+        int len = tosc_writeMessage(
+            OSC_BUFFER, OSC_BUF_SIZE, path, fmt,
+            config.send[idx].lut[lc].points[0].x,  config.send[idx].lut[lc].points[0].y,
+            config.send[idx].lut[lc].points[1].x,  config.send[idx].lut[lc].points[1].y,
+            config.send[idx].lut[lc].points[2].x,  config.send[idx].lut[lc].points[2].y,
+            config.send[idx].lut[lc].points[3].x,  config.send[idx].lut[lc].points[3].y,
+            config.send[idx].lut[lc].points[4].x,  config.send[idx].lut[lc].points[4].y,
+            config.send[idx].lut[lc].points[5].x,  config.send[idx].lut[lc].points[5].y,
+            config.send[idx].lut[lc].points[6].x,  config.send[idx].lut[lc].points[6].y,
+            config.send[idx].lut[lc].points[7].x,  config.send[idx].lut[lc].points[7].y,
+            config.send[idx].lut[lc].points[8].x,  config.send[idx].lut[lc].points[8].y,
+            config.send[idx].lut[lc].points[9].x,  config.send[idx].lut[lc].points[9].y,
+            config.send[idx].lut[lc].points[10].x, config.send[idx].lut[lc].points[10].y,
+            config.send[idx].lut[lc].points[11].x, config.send[idx].lut[lc].points[11].y,
+            config.send[idx].lut[lc].points[12].x, config.send[idx].lut[lc].points[12].y,
+            config.send[idx].lut[lc].points[13].x, config.send[idx].lut[lc].points[13].y,
+            config.send[idx].lut[lc].points[14].x, config.send[idx].lut[lc].points[14].y,
+            config.send[idx].lut[lc].points[15].x, config.send[idx].lut[lc].points[15].y
+        );
+        conn->send(conn, OSC_BUFFER, len);
+    } else {
+        for (int i = 0; i < LUT_CONTROL_POINT_COUNT; i++) {
+            float x = tosc_getNextFloat(msg);
+            float y = tosc_getNextFloat(msg);
+            config.send[idx].lut[lc].points[i].x = x;
+            config.send[idx].lut[lc].points[i].y = y;
+        }
+    }
+
+    return 0;
+}
+
 
 static int sync_all(tosc_message *msg, connectionT *conn);
 
@@ -510,10 +383,7 @@ static dispatch_entry dispatch_table[] = {
     {"/send/[1-4]/contrast", "f", handle_send_contrast},
     {"/send/[1-4]/saturation", "f", handle_send_saturation},
     {"/send/[1-4]/hue", "f", handle_send_hue},
-    {"/send/[1-4]/lut/Y", "ffffffffffffffffffffffffffffffff", handle_send_lut_Y},
-    {"/send/[1-4]/lut/R", "ffffffffffffffffffffffffffffffff", handle_send_lut_R},
-    {"/send/[1-4]/lut/G", "ffffffffffffffffffffffffffffffff", handle_send_lut_G},
-    {"/send/[1-4]/lut/B", "ffffffffffffffffffffffffffffffff", handle_send_lut_B},
+    {"/send/[1-4]/lut/[YRGB]", "ffffffffffffffffffffffffffffffff", handle_send_lut},
     {NULL, NULL, NULL}};
 
 // Central dispatch
@@ -570,11 +440,12 @@ static int sync_all(tosc_message *msg, connectionT *conn) {
       }
     }
     // Expand LUT channels
-    else if (strncmp(pat, "/send/[1-4]/lut/", 15) == 0) {
+    else if (strcmp(pat, "/send/[1-4]/lut/[YRGB]") == 0) {
       const char *channels = "YRGB";
       for (int n = 1; n <= 4; ++n) {
-        for (const char *ch = channels; *ch; ++ch) {
-          snprintf(local_path, sizeof(local_path), "/send/%d/lut/%c", n, *ch);
+        for (int i = 0; i < LUT_CHANNEL_COUNT; ++i) {
+          char ch = channels[i];
+          snprintf(local_path, sizeof(local_path), "/send/%d/lut/%c", n, ch);
           dummy.buffer = local_path;
           size_t len = strlen(local_path);
           dummy.format = dummy.buffer + len;
